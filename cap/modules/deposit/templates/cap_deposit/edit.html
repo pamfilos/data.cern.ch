@@ -1,5 +1,6 @@
 {% extends 'invenio_deposit/edit.html' %}
 
+
 {% if schema and schema_form %}
   {% set _schema = url_for('invenio_jsonschemas.get_schema', schema_path=schema, _external=True) %}
   {% set _schema_form = url_for('static', filename=schema_form) %}
