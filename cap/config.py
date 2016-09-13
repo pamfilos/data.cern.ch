@@ -34,7 +34,13 @@ from flask_principal import RoleNeed
 from invenio_oauthclient.contrib import cern
 
 from invenio_deposit import config
+from invenio_deposit.scopes import write_scope
+from invenio_deposit.utils import check_oauth2_scope
 from invenio_records_rest.utils import deny_all, allow_all
+
+from cap.modules.records.permissions import deposit_delete_permission_factory, \
+    deposit_read_permission_factory, record_create_permission_factory, \
+    record_update_permission_factory
 
 
 def _(x):
@@ -295,14 +301,24 @@ DEPOSIT_REST_ENDPOINTS['depid'].update({
     #         'cap.modules.records.serializers'
     #         ':json_v1_response')
     # },
-    'create_permission_factory_imp': allow_all,
-    'read_permission_factory_imp': allow_all,
-    'update_permission_factory_imp': allow_all,
-    'delete_permission_factory_imp': allow_all,
+    'create_permission_factory_imp': check_oauth2_scope(
+        lambda record: record_create_permission_factory(
+            record=record).can(),
+        write_scope.id),
+    'read_permission_factory_imp': deposit_read_permission_factory,
+    'update_permission_factory_imp': check_oauth2_scope(
+        lambda record: record_update_permission_factory(
+            record=record).can(),
+        write_scope.id),
+    'delete_permission_factory_imp': check_oauth2_scope(
+        lambda record: deposit_delete_permission_factory(
+            record=record).can(),
+        write_scope.id),
     'links_factory_imp': 'cap.modules.deposit.links:links_factory',
 })
 
-DEPOSIT_RECORDS_UI_ENDPOINTS = copy.deepcopy(config.DEPOSIT_RECORDS_UI_ENDPOINTS)
+DEPOSIT_RECORDS_UI_ENDPOINTS = copy.deepcopy(
+    config.DEPOSIT_RECORDS_UI_ENDPOINTS)
 DEPOSIT_RECORDS_UI_ENDPOINTS['depid'].update({
     'template': 'cap_deposit/edit.html',
 })

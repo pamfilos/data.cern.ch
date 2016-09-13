@@ -43,7 +43,12 @@ def create_blueprint():
 
 class NewItemView(View):
 
-    def __init__(self, template_name=None, schema=None, schema_form=None, read_permission_factory=None, create_permission_factory=None, update_permission_factory=None, delete_permission_factory=None):
+    def __init__(self, template_name=None,
+                 schema=None, schema_form=None,
+                 read_permission_factory=None,
+                 create_permission_factory=None,
+                 update_permission_factory=None,
+                 delete_permission_factory=None):
 
         self.template_name = template_name
         self.schema = schema
@@ -56,6 +61,7 @@ class NewItemView(View):
     def check_permissions(self):
         raise NotImplementedError()
 
+    @login_required
     def render_template(self, context):
         return render_template(self.template_name, **context)
 
@@ -70,7 +76,14 @@ class NewItemView(View):
 
 class ListView(View):
 
-    def __init__(self, template_name=None, schema=None, schema_form=None, read_permission_factory=None, create_permission_factory=None, update_permission_factory=None, delete_permission_factory=None):
+    def __init__(self,
+                 template_name=None,
+                 schema=None,
+                 schema_form=None,
+                 read_permission_factory=None,
+                 create_permission_factory=None,
+                 update_permission_factory=None,
+                 delete_permission_factory=None):
 
         self.template_name = template_name
         self.schema = schema
@@ -83,6 +96,7 @@ class ListView(View):
     def check_permissions(self):
         raise NotImplementedError()
 
+    @login_required
     def render_template(self, context):
         return render_template(self.template_name, **context)
 
