@@ -9,7 +9,17 @@ import FieldHeader from "../components/FieldHeader";
 
 let ObjectFieldTemplate = function(props) {
   if (props.idSchema.$id == "root") {
-    return <Box>{props.properties.map(prop => prop.content)}</Box>;
+    switch (props.uiSchema["layout"]) {
+      case "full":
+        return (
+          <Box size="medium">{props.properties.map(prop => prop.content)}</Box>
+        );
+      default:
+        return (
+          <Box size="medium">{props.properties.map(prop => prop.content)}</Box>
+        );
+      // return <Box size="medium" flex={true} justify="center" alignSelf="center" wrap={false}>{props.properties.map(prop => prop.content)}</Box>;
+    }
   }
 
   if (!("ui:object" in props.uiSchema)) {

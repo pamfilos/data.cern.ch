@@ -8,7 +8,7 @@ import published from "./published";
 import users from "./users";
 import dashboard from "./dashboard";
 import workflows from "./workflows";
-
+import schemaWizard from "./schemaWizard";
 
 const rootReducer = history =>
   combineReducers({
@@ -19,6 +19,7 @@ const rootReducer = history =>
     search,
     published,
     workflows,
+    schemaWizard,
     routing: connectRouter(history),
     router: connectRouter(history)
   });

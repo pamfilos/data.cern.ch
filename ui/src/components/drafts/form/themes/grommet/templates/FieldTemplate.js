@@ -13,6 +13,25 @@ let FieldTemplate = function(props) {
       _errors += `(${index + 1}) ${error} `;
     });
 
+  if (id == "root") {
+    switch (props.uiSchema["layout"]) {
+      case "full":
+        return <Box size="medium">{children}</Box>;
+      default:
+        // return <Box size="medium">{children}</Box>;
+        return (
+          <Box
+            size="medium"
+            flex="grow"
+            justify="center"
+            alignSelf="center"
+            wrap={false}
+          >
+            {children}
+          </Box>
+        );
+    }
+  }
   if (["array", "object"].indexOf(props.schema.type) > -1) {
     return (
       <Box
