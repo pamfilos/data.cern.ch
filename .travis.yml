@@ -45,6 +45,7 @@ env:
   - REQUIREMENTS=lowest E2E="no" SQLALCHEMY_DATABASE_URI="postgresql+psycopg2://postgres@localhost:5432/cap" ES_VERSION=5.0.1 APP_GITLAB_OAUTH_ACCESS_TOKEN="testtoken"
 
 before_install:
+  - echo "BEFORE INSTALL stage"
   # - mkdir /tmp/elasticsearch
   # - wget -O - https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ES_VERSION}.tar.gz  | tar xz --directory=/tmp/elasticsearch --strip-components=1
   # - "/tmp/elasticsearch/bin/elasticsearch-plugin install -b ingest-attachment"
@@ -52,12 +53,15 @@ before_install:
   # - sleep 30
   # - travis_retry pip install coveralls
   # - travis_retry pip install kwalitee --pre
-#   - echo ${TRAVIS_COMMIT_RANGE}
-#   - "travis_retry pip install --upgrade pip setuptools py"
-#   - "travis_retry pip install twine wheel coveralls requirements-builder"
-#   - "cat requirements.txt > .travis-lowest-requirements.txt"
+  # - echo ${TRAVIS_COMMIT_RANGE}
+  # - "travis_retry pip install --upgrade pip setuptools py"
+  # - "travis_retry pip install twine wheel coveralls requirements-builder"
+  # - "cat requirements.txt > .travis-lowest-requirements.txt"
 
-# install:
+install:
+  - echo "INSTALL stage"
+  # - cd ui && yarn install
+  # - cd ..
 #   - "travis_retry pip install -r .travis-${REQUIREMENTS}-requirements.txt"
 #   - "travis_retry pip install -r requirements-local-forks.txt"
 #   - "travis_retry pip install -e .[docs,tests,ldap]"
@@ -66,10 +70,9 @@ before_install:
 #   - travis_retry pip install kwalitee GitPython --pre
 
 script:
-  - echo "-----running scripts-------"
+  - echo "Running scripts for tests, etc"
   # - "./run-tests.sh"
 
 after_success:
-  - echo "-----running after_success scripts-------"
   # - coveralls
   - "./deploy.sh"
