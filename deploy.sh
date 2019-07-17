@@ -7,7 +7,7 @@ if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
     repo_owner="$(cut -d'/' -f1 <<<"$TRAVIS_PULL_REQUEST_SLUG")"
 
     if ! [ -z "$GITLAB_PIPELINE_TRIGGER_TOKEN" ]; then
-        ./scripts/build-and-deploy.sh -p ${TRAVIS_PULL_REQUEST}; -d ${repo_owner}
+        ./scripts/build-and-deploy.sh -p ${TRAVIS_PULL_REQUEST} -d ${repo_owner};
     fi
 fi
 
