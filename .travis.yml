@@ -60,6 +60,7 @@ before_install:
 
 install:
   - echo "INSTALL stage"
+  - echo "INSTALL stage2"
   # - cd ui && yarn install
   # - cd ..
 #   - "travis_retry pip install -r .travis-${REQUIREMENTS}-requirements.txt"
