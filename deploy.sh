@@ -1,9 +1,12 @@
 #!/bin/bash
 
+
 if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then 
     echo "Triggers build for PR:  ${TRAVIS_PULL_REQUEST_SLUG}";
     echo "UPSTREAM REPO: ${TRAVIS_REPO_SLUG} PR: ${TRAVIS_PULL_REQUEST}";
     echo "PR AGAINST ${TRAVIS_BRANCH}";
+    echo "PR COMMIT RANGE: $TRAVIS_COMMIT_RANGE"
+
     repo_owner="$(cut -d'/' -f1 <<<"$TRAVIS_PULL_REQUEST_SLUG")"
 
     if ! [ -z "$GITLAB_PIPELINE_TRIGGER_TOKEN" ]; then
