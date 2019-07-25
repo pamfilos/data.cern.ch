@@ -46,6 +46,7 @@ env:
 
 before_install:
   - echo "BEFORE INSTALL stage"
+  - "./scripts/ci/prebuild.sh"
   # - mkdir /tmp/elasticsearch
   # - wget -O - https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${ES_VERSION}.tar.gz  | tar xz --directory=/tmp/elasticsearch --strip-components=1
   # - "/tmp/elasticsearch/bin/elasticsearch-plugin install -b ingest-attachment"
