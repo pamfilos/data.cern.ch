@@ -14,6 +14,8 @@ export const LIST_UPDATE = "LIST_UPDATE";
 export const ADD_PROPERTY = "ADD_PROPERTY";
 export const ADD_PROPERTY_INIT = "ADD_PROPERTY_INIT";
 
+export const CREATE_MODE_ENABLE = "CREATE_MODE_ENABLE";
+
 export const PROPERTY_SELECT = "PROPERTY_SELECT";
 
 export const SCHEMA_INIT = "SCHEMA_INIT";
@@ -34,6 +36,10 @@ export function listUpdate(items) {
     type: LIST_UPDATE,
     items
   };
+}
+
+export function enableCreateMode() {
+  return { type: CREATE_MODE_ENABLE };
 }
 
 export function selectProperty(path) {

@@ -16,7 +16,8 @@ class SchemaTreeItem extends React.Component {
   }
 
   _onClick = () => {
-    this.props.selectProperty(this.props.rawErrors[0]);
+    // this.props.selectProperty(this.props.rawErrors[0]);
+    this.props.selectProperty(this.props.path);
   };
 
   _addProperty = () => {
@@ -28,45 +29,60 @@ class SchemaTreeItem extends React.Component {
   };
 
   render() {
+    let _id =
+      this.props.type == "array"
+        ? this.props.path.schema[this.props.path.schema.length - 2]
+        : this.props.path.schema[this.props.path.schema.length - 1];
     return (
-      <Box
-        colorIndex={this.props.colorIndex || "light-2"}
-        separator="all"
-        pad="small"
-        direction="row"
-        align="center"
-        justify="between"
-        wrap={false}
-      >
-        {this.props.schema ? (
-          <Box
-            onClick={this._onClick.bind(this)}
-            direction="row"
-            align="center"
-            wrap={false}
-          >
-            <Label size="small" margin="none">
-              <strong>
-                {mapType2Icon[this.props.schema.type] || "missing"}
-              </strong>
-            </Label>
-            <Box flex={false} pad={{ horizontal: "small" }}>
-              {this.props.schema.title || this.props.id}
+      <div style={{ borderBottom: "2px solid #64727d" }}>
+        <Box
+          colorIndex={this.props.colorIndex || "light-2"}
+          separator="all"
+          pad={{ horizontal: "small" }}
+          direction="row"
+          align="center"
+          justify="between"
+          wrap={false}
+        >
+          {this.props.schema ? (
+            <Box
+              onClick={this._onClick.bind(this)}
+              direction="row"
+              align="center"
+              wrap={false}
+            >
+              <Label size="small" margin="none">
+                <strong>
+                  {mapType2Icon[this.props.schema.type] || "missing"}
+                </strong>
+              </Label>
+              <Box flex={false} pad={{ horizontal: "small" }} align="start">
+                <div>{this.props.schema.title || "Untitled field"}</div>
+                <div
+                  style={{
+                    padding: "0 3px",
+                    marginBottom: "4px",
+                    backgroundColor: "#e6e6e6",
+                    fontSize: "11px"
+                  }}
+                >
+                  {_id}
+                </div>
+              </Box>
             </Box>
-            <FormEditIcon />
-          </Box>
-        ) : null}
-        {this.props.schema ? (
-          <Box direction="row" align="center" wrap={false} flex={false}>
-            {this.props.schema.type == "object" ? (
-              <FormAddIcon onClick={this._addProperty} />
-            ) : null}
-            {this.props.schema.type == "array" ? (
-              <FormAddIcon onClick={this._addItem} />
-            ) : null}
-          </Box>
-        ) : null}
-      </Box>
+          ) : null}
+          {this.props.schema ? (
+            <Box direction="row" align="center" wrap={false} flex={false}>
+              {this.props.schema.type == "object" ? (
+                <FormAddIcon onClick={this._addProperty} />
+              ) : null}
+              {this.props.schema.type == "array" ? (
+                <FormAddIcon onClick={this._addItem} />
+              ) : null}
+            </Box>
+          ) : null}
+        </Box>
+      </div>
     );
   }
 }

@@ -29,23 +29,7 @@ class SchemaWizard extends React.Component {
             wrap={false}
             justify="between"
           >
-            {this.props.field ? (
-              <PropertyEditor />
-            ) : (
-              <Box size="medium">
-                <Header
-                  colorIndex="accent-2"
-                  pad="small"
-                  margin="none"
-                  size="small"
-                >
-                  Add
-                </Header>
-                <Box>
-                  <SelectFieldType />
-                </Box>
-              </Box>
-            )}
+            {this.props.field ? <PropertyEditor /> : <SelectFieldType />}
             <SchemaPreview />
             <FormPreview />
           </Box>

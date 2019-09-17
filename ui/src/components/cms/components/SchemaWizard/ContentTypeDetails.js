@@ -3,8 +3,8 @@ import { PropTypes } from "prop-types";
 
 import Box from "grommet/components/Box";
 
-import PropKeyEditor from "./SchemaWizard/PropertyEditor/PropKeyEditor";
-import PropKeyView from "./SchemaWizard/PropertyEditor/PropKeyView";
+import PropKeyEditor from "./PropertyEditor/PropKeyEditor";
+import PropKeyView from "./PropertyEditor/PropKeyView";
 
 class ContentTypeDetails extends React.Component {
   render() {

@@ -2,106 +2,15 @@ import React from "react";
 
 import Box from "grommet/components/Box";
 import Paragraph from "grommet/components/Paragraph";
-import Label from "grommet/components/Label";
 import Heading from "grommet/components/Heading";
 
 import DraggableBox from "./DraggableBox";
-import { commonSchema } from "../../utils/schemas";
 
 import { PropTypes } from "prop-types";
 
-const fieldTypes = {
-  string: {
-    title: "Text",
-    description: "Titles, names, paragraphs, IDs, list of names",
-    child: {},
-    default: {
-      schema: {
-        type: "string"
-      },
-      uiSchema: {}
-    }
-  },
-  number: {
-    title: "Number",
-    description: "IDs, order number, rating, quantity",
-    child: {},
-    default: {
-      schema: {
-        type: "number"
-      },
-      uiSchema: {}
-    }
-  },
-  object: {
-    title: "JSON Object",
-    description: "Data in JSON format, Grouped section",
-    child: {},
-    default: {
-      schema: {
-        type: "object",
-        properties: {}
-      },
-      uiSchema: {}
-    }
-  },
-  reference: {
-    title: "Reference",
-    description: "For example, an analysis can reference its author(s)",
-    child: {},
-    default: {
-      schema: {
-        type: "string"
-      },
-      uiSchema: {}
-    }
-  },
-  boolean: {
-    title: "Boolean",
-    description: "Yes or no, 1 or 0, true or false",
-    child: {},
-    default: {
-      schema: {
-        type: "boolean",
-        properties: {}
-      },
-      uiSchema: {}
-    }
-  },
-  array: {
-    title: "Array",
-    description:
-      "A list of things. List of strings, numbers, objects, references",
-    child: {},
-    default: {
-      schema: {
-        type: "array",
-        items: {}
-      },
-      uiSchema: {}
-    }
-  },
-  accordion: {
-    title: "Accordion",
-    description: "Data in JSON format, Grouped section",
-    child: {},
-    default: {
-      schema: {
-        type: "object",
-        properties: {}
-      },
-      uiSchema: {
-        "ui:object": "accordionObjectField"
-      }
-    }
-  }
-};
+import fields from "../../utils/fieldTypes";
 
 class SelectFieldType extends React.Component {
-  constructor(props) {
-    super(props);
-  }
-
   _onClick = type => {
     let { path: schemaPath, uiPath: uiSchemaPath } = this.props.path.toJS();
     let schema = this.props.schema ? this.props.schema.toJS() : {};
@@ -129,30 +38,40 @@ class SelectFieldType extends React.Component {
 
   render() {
     return (
-      <Box flex={true}>
-        <Box
-          direction="row"
-          flex={false}
-          wrap={true}
-          justify="start"
-          align="between"
-        >
-          {Object.entries(fieldTypes).map(([key, type]) => (
-            <Box basis="1/2" key={key} pad="small">
-              <DraggableBox data={type} key={key}>
-                <Box
-                  onClick={this._onClick.bind(this, type)}
-                  colorIndex="grey-4"
-                  flex={false}
-                  separator="all"
-                  pad={{ horizontal: "small" }}
-                  direction="row"
-                  justify="between"
-                  align="center"
-                >
-                  <Label size="small">{type.title}</Label>
-                </Box>
-              </DraggableBox>
+      <Box flex={false} size="medium" colorIndex="grey-2" pad="medium">
+        <Paragraph>
+          Select the field type you want to use and drag and drop it to the
+          desired location in the form
+        </Paragraph>
+        <Box flex={true}>
+          {Object.entries(fields).map(([key, type]) => (
+            <Box>
+              <Heading tag="h4">{type.title}</Heading>
+              <Box
+                direction="row"
+                flex={false}
+                wrap={true}
+                justify="start"
+                align="between"
+                margin={{ bottom: "large" }}
+              >
+                {Object.entries(type.fields).map(([key, type], index) => (
+                  <Box basis="1/2" key={key}>
+                    <DraggableBox data={type} key={index}>
+                      <Box
+                        onClick={this._onClick.bind(this, type)}
+                        flex={false}
+                        pad={{ horizontal: "small" }}
+                        direction="row"
+                        justify="between"
+                        align="center"
+                      >
+                        {type.title}
+                      </Box>
+                    </DraggableBox>
+                  </Box>
+                ))}
+              </Box>
             </Box>
           ))}
         </Box>

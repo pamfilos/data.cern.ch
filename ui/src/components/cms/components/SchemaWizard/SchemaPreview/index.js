@@ -5,43 +5,42 @@ import Box from "grommet/components/Box";
 import JSONViewer from "./JSONViewer";
 import { Header, Anchor } from "grommet";
 import SchemaTree from "../../../containers/SchemaTree";
+import CodeIcon from "grommet/components/icons/base/Code";
+import TreeIcon from "grommet/components/icons/base/Tree";
 
 class SchemaPreview extends React.Component {
   constructor(props) {
     super(props);
 
-    this.state = {
-      view: "tree"
-    };
+    this.state = { view: "tree" };
   }
 
   render() {
     return (
       <Box
         dirrection="column"
-        flex={true}
+        flex={false}
+        size={{ width: "medium" }}
         justify="between"
-        size={{ width: { max: "medium" } }}
+        colorIndex="grey-3"
       >
         <Header
           size="small"
-          colorIndex="grey-4"
           margin="none"
+          justify="end"
           pad={{ horizontal: "small" }}
         >
-          Schema View:
-          <a
-            style={{ padding: "0 10px", margin: "0 5px" }}
-            onClick={() => this.setState({ view: "tree" })}
-          >
-            Tree
-          </a>
-          <a
-            style={{ padding: "0 10px", margin: "0 5px" }}
-            onClick={() => this.setState({ view: "json" })}
-          >
-            JSON view
-          </a>
+          {this.state.view == "tree" ? (
+            <Anchor
+              icon={<CodeIcon />}
+              onClick={() => this.setState({ view: "json" })}
+            />
+          ) : (
+            <Anchor
+              icon={<TreeIcon />}
+              onClick={() => this.setState({ view: "tree" })}
+            />
+          )}
         </Header>
 
         {this.state.view == "tree" ? (

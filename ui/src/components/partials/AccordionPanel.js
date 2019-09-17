@@ -20,6 +20,7 @@ class _AccordionPanel extends AccordionPanel {
       className,
       children,
       heading,
+      headingColor,
       pad
     } = this.props;
     const { intl } = this.context;
@@ -47,7 +48,7 @@ class _AccordionPanel extends AccordionPanel {
             <Box
               pad="small"
               direction="row"
-              colorIndex="neutral-1"
+              colorIndex={headingColor || "neutral-1"}
               justify="between"
               align="center"
               responsive={false}

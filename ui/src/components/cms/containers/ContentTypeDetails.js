@@ -1,5 +1,5 @@
 import { connect } from "react-redux";
-import ContentTypeDetails from "../components/ContentTypeDetails";
+import ContentTypeDetails from "../components/SchemaWizard/ContentTypeDetails";
 import { updateCurrentSchemaWithField } from "../../../actions/schemaWizard";
 
 function mapStateToProps(state, props) {

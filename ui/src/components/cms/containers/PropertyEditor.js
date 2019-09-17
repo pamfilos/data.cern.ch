@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
 import PropertyEditor from "../components/SchemaWizard/PropertyEditor";
-import { addProperty } from "../../../actions/schemaWizard";
+import { addProperty, enableCreateMode } from "../../../actions/schemaWizard";
 
 function mapStateToProps(state) {
   return {
@@ -11,7 +11,8 @@ function mapStateToProps(state) {
 
 function mapDispatchToProps(dispatch) {
   return {
-    addProperty: (path, key) => dispatch(addProperty(path, key))
+    addProperty: (path, key) => dispatch(addProperty(path, key)),
+    enableCreateMode: () => dispatch(enableCreateMode())
   };
 }
 

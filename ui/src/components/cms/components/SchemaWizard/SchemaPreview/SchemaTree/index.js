@@ -17,26 +17,22 @@ class SchemaTree extends React.Component {
 
   render() {
     return (
-      <Box flex={true}>
-        <Box flex={true}>
-          <Form
-            schema={this.props.schema.toJS()}
-            uiSchema={{}}
-            formData={{}}
-            showErrorList={false}
-            tagName="div"
-            FieldTemplate={_FieldTemplate}
-            ObjectFieldTemplate={ObjectFieldTemplate}
-            ArrayFieldTemplate={_ArrayFieldTemplate}
-            liveValidate={true}
-            validate={_validate}
-            noHtml5Validate={true}
-            formContext={{ schema: [], uiSchema: [] }}
-          >
-            <span />
-          </Form>
-        </Box>
-      </Box>
+      <Form
+        schema={this.props.schema.toJS()}
+        uiSchema={{}}
+        formData={{}}
+        showErrorList={false}
+        tagName="div"
+        FieldTemplate={_FieldTemplate}
+        ObjectFieldTemplate={ObjectFieldTemplate}
+        ArrayFieldTemplate={_ArrayFieldTemplate}
+        liveValidate={true}
+        validate={_validate}
+        noHtml5Validate={true}
+        formContext={{ schema: [], uiSchema: [] }}
+      >
+        <span />
+      </Form>
     );
   }
 }
@@ -55,13 +51,11 @@ let ArrayFieldTemplate = function(props) {
   };
   return (
     <Box flex={true}>
-      <SchemaTreeItem type="array" {...props} />
+      <SchemaTreeItem type="array" {...props} path={_path} />
 
       <Box flex={true} margin={{ left: "medium" }}>
         <HoverBox addProperty={props.addProperty} key={props.id} path={_path}>
-          <div style={{ backgroundColor: "rgba(132, 161, 187, 0.21)" }}>
-            Array Item
-          </div>
+          <div style={{ borderBottom: "5px solid #e6e6e6" }} />
           <Form
             schema={props.schema.items}
             uiSchema={{}}
@@ -95,9 +89,12 @@ let FieldTemplate = function(props) {
   if (props.id == "root") {
     return (
       <HoverBox addProperty={props.addProperty} key={props.id} path={path}>
-        <div style={{ backgroundColor: "rgba(132, 161, 187, 0.21)" }}>
+        <Box
+          flex={true}
+          pad={formContext.schema.length == 0 ? "medium" : "none"}
+        >
           {children}
-        </div>
+        </Box>
       </HoverBox>
     );
   }
@@ -113,7 +110,7 @@ let FieldTemplate = function(props) {
   } else if (["object"].indexOf(schema.type) > -1) {
     _renderObjectArray = (
       <Box flex={true}>
-        <SchemaTreeItem type="object" {...props} />
+        <SchemaTreeItem type="object" {...props} path={path} />
         <Box flex={true} margin={{ left: "medium" }}>
           <Form
             schema={schema}
@@ -144,7 +141,7 @@ let FieldTemplate = function(props) {
     );
   }
 
-  return <SchemaTreeItem type="array" {...props} />;
+  return <SchemaTreeItem type="other" {...props} path={path} />;
 };
 
 function mapDispatchToProps(dispatch) {

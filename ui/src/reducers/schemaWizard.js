@@ -8,6 +8,7 @@ import {
   LIST_UPDATE,
   PROPERTY_SELECT,
   PROPERTY_SELECT_CLEAR,
+  CREATE_MODE_ENABLE,
   ADD_PROPERTY,
   ADD_PROPERTY_INIT
 } from "../actions/schemaWizard";
@@ -102,6 +103,8 @@ export default function schemaReducer(state = initialState, action) {
         }).set("editView", true)
       );
     case PROPERTY_SELECT_CLEAR:
+      return state.set("field", null);
+    case CREATE_MODE_ENABLE:
       return state.set("field", null);
     case CURRENT_UPDATE_PATH:
       return state
