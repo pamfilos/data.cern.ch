@@ -16,7 +16,7 @@ export default function(ComposedComponent) {
       return true;
     }
 
-    componentWillUpdate(nextProps) {
+    componentDidUpdate(nextProps) {
       if (nextProps.isLoggedIn) {
         this.props.history.push("/");
       }

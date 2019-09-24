@@ -94,7 +94,7 @@ export function loginLocalUser(data) {
   };
 }
 
-export function initCurrentUser(next) {
+export function initCurrentUser(next = "/") {
   return function(dispatch) {
     axios
       .get("/api/me")

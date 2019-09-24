@@ -26,7 +26,11 @@ class WelcomePage extends React.Component {
 
   onFormSubmit = formData => {
     // insert history data
-    formData.next = this.props.history.location.state.next;
+    formData.next =
+      this.props.history.location.state &&
+      this.props.history.location.state.next
+        ? this.props.history.location.state.next
+        : "/";
 
     // send form data
     this.props.loginLocalUser(formData);
@@ -91,7 +95,7 @@ class WelcomePage extends React.Component {
                 <LoginForm
                   usernameType="email"
                   defaultValues={{ username: "info@inveniosoftware.org" }}
-                  onSubmit={this.onFormSubmit}
+                  onSubmit={this.onFormSubmit.bind(this)}
                 />
               ) : null}
             </Box>

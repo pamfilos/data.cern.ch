@@ -26,8 +26,13 @@ class App extends React.Component {
     super(props);
   }
 
-  componentDidMount() {
-    this.props.initCurrentUser();
+  componentWillMount() {
+    let next =
+      this.props.history.location.state &&
+      this.props.history.location.state.next
+        ? this.props.history.location.state.next
+        : "/";
+    this.props.initCurrentUser(next);
   }
 
   render() {
