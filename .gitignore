@@ -26,6 +26,7 @@ src/
 *.egg
 .DS_Store
 .pytest_cache/
+./src
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
