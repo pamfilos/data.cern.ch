@@ -193,10 +193,11 @@ class Schema(db.Model):
         assert self.id
 
         try:
-            db.session.add(
-                ActionSystemRoles.allow(SchemaReadAction(self.id),
-                                        role=authenticated_user))
-            db.session.flush()
+            with db.session.begin_nested():
+                db.session.add(
+                    ActionSystemRoles.allow(SchemaReadAction(self.id),
+                                            role=authenticated_user))
+            db.session.commit()
         except IntegrityError:
             db.session.rollback()
 

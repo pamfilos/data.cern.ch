@@ -35,15 +35,16 @@ def add_schema_from_fixture(data=None):
     allow_all = data.pop("allow_all", False)
     name = data['name']
 
-    try:
-        schema = Schema.get(name=data['name'], version=data['version'])
-        print('{} already exist.'.format(name))
+    with db.session.begin_nested():
+        try:
+            schema = Schema.get(name=data['name'], version=data['version'])
+            print('{} already exist.'.format(name))
 
-    except JSONSchemaNotFound:
-        schema = Schema(**data)
-        db.session.add(schema)
+        except JSONSchemaNotFound:
+            schema = Schema(**data)
+            db.session.add(schema)
 
-        print('{} added.'.format(name))
+            print('{} added.'.format(name))
 
     db.session.commit()
 
