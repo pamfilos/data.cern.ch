@@ -11,10 +11,10 @@ let FieldTemplate = function(props) {
     return <span>{children}</span>;
   }
 
-  return children.props.formData === undefined ? null : (
+  return children.props && children.props.formData === undefined ? null : (
     <Box flex={true} direction="row">
       {label ? (
-        <Box>
+        <Box flex={true}>
           <FieldHeader title={label} />
         </Box>
       ) : null}
@@ -25,7 +25,8 @@ let FieldTemplate = function(props) {
 
 FieldTemplate.propTypes = {
   label: PropTypes.string,
-  children: PropTypes.element
+  children: PropTypes.oneOf([PropTypes.array, PropTypes.element]),
+  schema: PropTypes.object
 };
 
 export default FieldTemplate;

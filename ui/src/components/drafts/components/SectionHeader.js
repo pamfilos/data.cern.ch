@@ -7,19 +7,13 @@ import Header from "grommet/components/Header";
 
 export default function SectionHeader(props) {
   return (
-    <Header
-      justify="center"
-      alignContent="center"
-      size="small"
-      colorIndex="grey-4"
-      pad="none"
-    >
+    <Header justify="center" alignContent="center" size="small" pad="none">
       <Box
         flex={true}
         justify="between"
         alignContent="center"
         direction="row"
-        pad={{ horizontal: "small" }}
+        style={{ padding: "0 10px" }}
         responsive={false}
       >
         <Label
@@ -43,8 +37,9 @@ export default function SectionHeader(props) {
 }
 
 SectionHeader.propTypes = {
-  label: PropTypes.string,
+  label: PropTypes.oneOfType([PropTypes.string, PropTypes.object]),
   icon: PropTypes.element,
   status: PropTypes.element,
-  action: PropTypes.element
+  action: PropTypes.element,
+  uppercase: PropTypes.bool
 };

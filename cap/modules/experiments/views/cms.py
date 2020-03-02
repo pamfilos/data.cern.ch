@@ -21,21 +21,19 @@
 # In applying this license, CERN does not
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
-
 """Theme blueprint in order for template and static files to be loaded."""
 
 from __future__ import absolute_import, print_function
 
-import re
-from urllib import unquote
-
-from flask import Blueprint, jsonify, request
-from invenio_search.proxies import current_search_client as es
+from flask import Blueprint, abort, jsonify, request
+from six.moves.urllib.parse import unquote
 
 from ..permissions import cms_permission
-from ..utils.cadi import get_from_cadi_by_id, parse_cadi_entry
-from ..utils.cms import CMS_TRIGGERS_INDEX
-from ..utils.das import DAS_DATASETS_INDEX
+from ..search.cms_triggers import CMSTriggerSearch
+from ..search.das import DASSearch
+from ..serializers import CADISchema
+from ..utils.cadi import get_from_cadi_by_id
+from ..utils.das import update_term_for_das_query
 
 cms_bp = Blueprint(
     'cap_cms',
@@ -44,81 +42,58 @@ cms_bp = Blueprint(
 )
 
 
+def _get_cadi(cadi_id):
+    """Retrieve specific CADI analysis."""
+    cadi_id = unquote(cadi_id).upper()
+    entry = get_from_cadi_by_id(cadi_id)
+
+    if entry:
+        serializer = CADISchema()
+        parsed = serializer.dump(entry).data
+    else:
+        parsed = {}
+    return parsed, 200
+
+
 @cms_bp.route('/cadi/<cadi_id>', methods=['GET'])
 @cms_permission.require(403)
 def get_analysis_from_cadi(cadi_id):
-    """Retrieve specific CADI analysis."""
-    cadi_id = unquote(cadi_id).upper()
-
-    entry = get_from_cadi_by_id(cadi_id)
-    if entry:
-        _, parsed = parse_cadi_entry(entry)
-    else:
-        parsed = {}
-
-    return jsonify(parsed)
+    """Retrieve specific CADI analysis (route)."""
+    resp, status = _get_cadi(cadi_id)
+    return jsonify(resp), status
 
 
 @cms_bp.route('/datasets', methods=['GET'])
 @cms_permission.require(403)
 def get_datasets_suggestions():
     """Retrieve specific dataset names."""
-    alias = DAS_DATASETS_INDEX['alias']
-    term = unquote(request.args.get('query'))
-    res = []
+    query = update_term_for_das_query(unquote(request.args.get('query')))
 
-    if term:
-        query = {
-            "suggest": {
-                "name-suggest": {
-                    "prefix": term,
-                    "completion": {
-                        "field": "name"
-                    }
-                }
-            }
-        }
+    search = DASSearch().prefix_search(query).sort('name')
+    results = search.execute()
 
-        res = es.search(index=alias,
-                        terminate_after=10,
-                        body=query)
-
-        suggestions = res['suggest']['name-suggest'][0]['options']
-        res = [x['_source']['name'] for x in suggestions]
-
-    return jsonify(res)
+    return jsonify([hit.name for hit in results])
 
 
 @cms_bp.route('/triggers', methods=['GET'])
 @cms_permission.require(403)
 def get_triggers_suggestions():
     """Retrieve specific dataset names."""
-    alias = CMS_TRIGGERS_INDEX['alias']
-    dataset = unquote(request.args.get('dataset'))
-    term = unquote(request.args.get('query'))
-    res = []
+    try:
+        query = unquote(request.args.get('query'))
+        dataset = unquote(request.args.get('dataset'))
+    except TypeError:
+        abort(
+            400, 'You need to provide query and dataset(eg. /ZeroBias7/..) \
+            as parameters.')
 
-    if dataset and term:
-        # triggers are categorized by dataset prefix
-        dataset_prefix = re.search('/?([^/]+)*', dataset).group(1)
+    year = request.args.get('year')
 
-        query = {
-            "suggest": {
-                "trigger-suggest": {
-                    "prefix": term,
-                    "completion": {
-                        "field": "trigger",
-                        "contexts": {
-                            "dataset": dataset_prefix
-                        }
-                    }
-                }
-            }
-        }
+    search = CMSTriggerSearch().prefix_search(query, dataset, year)
+    search.aggs.bucket('_triggers', 'terms',
+                       field='trigger.keyword',
+                       order={'_term': 'asc'})
 
-        res = es.search(index=alias, body=query)
-
-        suggestions = res['suggest']['trigger-suggest'][0]['options']
-        res = [x['_source']['trigger'] for x in suggestions]
-
-    return jsonify(res)
+    results = search.execute()
+    aggregations = results.aggregations._triggers.buckets
+    return jsonify([trigger.key for trigger in aggregations])

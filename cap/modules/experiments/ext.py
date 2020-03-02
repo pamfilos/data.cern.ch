@@ -21,17 +21,17 @@
 # In applying this license, CERN does not
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
-
 """Experiments module."""
 
 from __future__ import absolute_import, print_function
 
 import certifi
 
+from .cli import *
+
 
 class CAPExperiments(object):
     """Experiments extension."""
-
     def __init__(self, app=None):
         """Extension initialization."""
         if app:
@@ -48,8 +48,9 @@ class CAPExperiments(object):
         Location of pem file defined in `cap.config.CERN_CERTS_PEM`
         """
         cern_pem = app.config.get('CERN_CERTS_PEM')
+        is_debug = app.config.get('DEBUG')
 
-        if cern_pem:
+        if cern_pem and is_debug:
             with open(certifi.where(), 'r+') as _out, \
                     open(cern_pem, 'r') as _in:
                 content = _in.read()

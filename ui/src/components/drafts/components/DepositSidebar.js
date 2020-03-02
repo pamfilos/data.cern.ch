@@ -5,17 +5,18 @@ import { connect } from "react-redux";
 import { withRouter } from "react-router";
 
 import Box from "grommet/components/Box";
-import Anchor from "grommet/components/Anchor";
 import Sidebar from "grommet/components/Sidebar";
 
 import AddIcon from "grommet/components/icons/base/Add";
 
-import { toggleFilemanagerLayer } from "../../../actions/drafts";
+import { toggleFilemanagerLayer } from "../../../actions/draftItem";
 
 import SectionHeader from "./SectionHeader";
 import DepositFilesList from "./DepositFilesList";
 
 import { Route } from "react-router-dom";
+
+import TimeAgo from "react-timeago";
 
 class DepositSidebar extends React.Component {
   constructor(props) {
@@ -23,32 +24,81 @@ class DepositSidebar extends React.Component {
   }
 
   _renderAddFileIcon() {
-    return (
-      <Route
-        path="/drafts/:draft_id/edit"
-        render={() => (
-          <Anchor
-            onClick={this.props.toggleFilemanagerLayer}
-            size="xsmall"
-            icon={<AddIcon />}
+    if (this.props.status !== "published") {
+      if (this.props.canUpdate) {
+        return (
+          <Route
+            path="/drafts/:draft_id/"
+            render={() => (
+              <Box
+                colorIndex="light-2"
+                onClick={this.props.toggleFilemanagerLayer}
+                style={{ padding: "5px" }}
+              >
+                <AddIcon size="small" />
+              </Box>
+            )}
           />
-        )}
-      />
-    );
+        );
+      }
+    }
   }
 
   render() {
     return (
-      <Sidebar full={false} size="medium" colorIndex="light-2">
-        <Box flex={true}>
+      <Sidebar full={false} size="medium" colorIndex="light-2" separator="left">
+        <Box flex={false} pad="none">
+          <Box flex={false} pad="small" style={{ fontWeight: "100" }}>
+            <Box
+              direction="row"
+              wrap={false}
+              justify="between"
+              margin={{ bottom: "small" }}
+            >
+              ID <span>{this.props.id}</span>
+            </Box>
+            <Box
+              direction="row"
+              wrap={false}
+              justify="between"
+              margin={{ bottom: "small" }}
+            >
+              Status <span>{this.props.status}</span>
+            </Box>
+            <Box
+              direction="row"
+              wrap={false}
+              justify="between"
+              margin={{ bottom: "small" }}
+            >
+              Creator <span>{this.props.created_by}</span>
+            </Box>
+            <Box
+              direction="row"
+              wrap={false}
+              justify="between"
+              margin={{ bottom: "small" }}
+            >
+              Created:{" "}
+              <strong>
+                <TimeAgo date={this.props.created} minPeriod="60" />
+              </strong>
+            </Box>
+            <Box direction="row" wrap={false} justify="between">
+              Last Updated:{" "}
+              <strong>
+                <TimeAgo date={this.props.updated} minPeriod="60" />
+              </strong>
+            </Box>
+          </Box>
+        </Box>
+        <Box flex={true} pad="none" colorIndex="light-1">
           <SectionHeader
-            label="Files | Data | Source Code"
+            label="Files | Data | Repos"
+            uppercase={true}
             icon={this._renderAddFileIcon()}
           />
-          <DepositFilesList
-            files={this.props.files || []}
-            draft_id={this.props.draft_id}
-          />
+          <DepositFilesList files={this.props.files} />
         </Box>
       </Sidebar>
     );
@@ -56,18 +106,28 @@ class DepositSidebar extends React.Component {
 }
 
 DepositSidebar.propTypes = {
-  showSidebar: PropTypes.bool,
   toggleFilemanagerLayer: PropTypes.func,
-  draft_id: PropTypes.string,
-  match: PropTypes.object,
-  files: PropTypes.object
+  files: PropTypes.object,
+  created_by: PropTypes.string,
+  updated: PropTypes.string,
+  created: PropTypes.string,
+  experiment: PropTypes.string,
+  status: PropTypes.string,
+  id: PropTypes.string,
+  canUpdate: PropTypes.bool
 };
 
 function mapStateToProps(state) {
   return {
-    showSidebar: state.drafts.get("showSidebar"),
-    files: state.drafts.getIn(["current_item", "files"]),
-    draft_id: state.drafts.getIn(["current_item", "id"])
+    files: state.draftItem.get("bucket"),
+    id: state.draftItem.get("id"),
+    status: state.draftItem.get("status"),
+    experiment: state.draftItem.get("experiment"),
+    revision: state.draftItem.get("revision"),
+    created_by: state.draftItem.get("created_by"),
+    created: state.draftItem.get("created"),
+    updated: state.draftItem.get("updated"),
+    canUpdate: state.draftItem.get("can_update")
   };
 }
 

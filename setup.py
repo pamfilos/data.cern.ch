@@ -15,7 +15,7 @@ readme = open('README.rst').read()
 
 DATABASE = "postgresql"
 ELASTICSEARCH = "elasticsearch5"
-INVENIO_VERSION = "3.0.0rc2"
+INVENIO_VERSION = '3.0.0'  # "3.0.0rc2"
 
 tests_require = [
     'check-manifest>=0.35',
@@ -29,55 +29,48 @@ tests_require = [
     'pytest-pep8>=1.0.6',
     'pytest-random-order>=0.5.4',
     'pytest==3.8.1',
+    'yapf>=0.28.0',
     'responses==0.10.6',
     'selenium>=3.4.3',
 ]
 
-extras_require = {
-    'docs': [
-        'Sphinx>=1.5.1',
-    ],
-    'tests': tests_require,
-}
+extras_require = {'docs': ['Sphinx>=1.5.1'], 'tests': tests_require}
 
 extras_require['all'] = []
 for reqs in extras_require.values():
     extras_require['all'].extend(reqs)
 
-extras_require['ldap'] = [
-    'python-ldap>=2.4.39'
-]
+extras_require['ldap'] = ['python-ldap>=2.4.39']
 
 # Do not include in all requirement
 extras_require['xrootd'] = [
-    'invenio-xrootd>=1.0.0a6',
-    'xrootdpyfs>=0.1.5',
+    # 'invenio-xrootd>=1.0.0a6',
+    # 'xrootdpyfs>=0.1.5',
 ]
 
-setup_requires = [
-    'Babel>=2.4.0',
-    'pytest-runner>=3.0.0,<5',
-]
+setup_requires = ['Babel>=2.4.0', 'pytest-runner>=3.0.0,<5']
 
 install_requires = [
     'Flask==0.12.4',
     'Flask-Cli>=0.4.0',
     'Flask-Cache>=0.13.1',
     'Flask-Debugtoolbar>=0.10.1',
-
+    # [TOFIX] Flask-Talisman from 0.5.0->0.5.1 pinning needed for issue
+    # https://github.com/GoogleCloudPlatform/flask-talisman/issues/22
+    # Check also invenio issue
+    # https://github.com/inveniosoftware/invenio-admin/issues/66
+    'flask-talisman==0.5.1',
     # CAP specific libraries
     'PyGithub>=1.35',
     'python-gitlab>=1.0.2',
     'python-cern-sso-krb==1.3.3',
+    'python-gssapi==0.6.4',
+    'paramiko==2.7.1',
     'cachetools==3.1.0',
 
     # Pinned libraries
-    'celery==4.1.1',  # temporary fix
-    # temporary pinned since there are 'connection closed' issues
-    # on production server
     'urllib3[secure]==1.22',
-    'SQLAlchemy-Continuum==1.3.4',
-
+    'sqlalchemy==1.3.0',
     # temporary pinned since there are 'fs' conslicts between
     # 'reana-commons' and 'invenio-files-rest'
     'fs==0.5.4',
@@ -90,11 +83,11 @@ install_requires = [
     'invenio-rest==1.0.0',
     'invenio-files-rest==1.0.0',
     'invenio-records-files==1.0.0a11',
-
+    'coolname==1.1.0',
+    'Authlib==0.12.1',
     # "raven" versions needed till we FIX dependecies on installation
     'raven[flask]>=5.0.0,<5.5',
-    'invenio-logging[sentry]>=1.0.0b1',
-
+    'invenio-logging[sentry]>=1.0.0',
     'uWSGI==2.0.17',
     'uwsgi-tools==1.1.1',
     'uwsgitop==0.10',
@@ -102,11 +95,10 @@ install_requires = [
 
 packages = find_packages()
 
-
 # Get the version string. Cannot be done with import!
 g = {}
 with open(os.path.join('cap', 'version.py'), 'rt') as fp:
-    exec(fp.read(), g)
+    exec (fp.read(), g)
     version = g['__version__']
 
 setup(
@@ -118,15 +110,14 @@ setup(
     license='MIT',
     author='CERN',
     author_email='analysis-preservation-support@cern.ch',
-    url='https://github.com/cernanalysispreservation/analysispreservation.cern.ch',  # noqa
+    url=
+    'https://github.com/cernanalysispreservation/analysispreservation.cern.ch',  # noqa
     packages=packages,
     zip_safe=False,
     include_package_data=True,
     platforms='any',
     entry_points={
-        'console_scripts': [
-            'cap = cap.cli:cli',
-        ],
+        'console_scripts': ['cap = cap.cli:cli'],
         'invenio_access.actions': [
             'cms_access = '
             'cap.modules.experiments.permissions:cms_access_action',
@@ -138,12 +129,11 @@ setup(
             'cap.modules.experiments.permissions:atlas_access_action',
         ],
         'invenio_base.api_apps': [
-            'cap_access = cap.modules.access.ext:CAPAccess',
-            'cap_cache = cap.modules.cache.ext:CAPCache',
             'cap_deposit = cap.modules.deposit.ext:CAPDeposit',
             'cap_experiments = cap.modules.experiments.ext:CAPExperiments',
             'cap_fixtures = cap.modules.fixtures.ext:CAPFixtures',
             'cap_xrootd = cap.modules.xrootd.ext:CapXRootD',
+            'cap_auth = cap.modules.auth.ext:CAPOAuth',
         ],
         'invenio_base.api_blueprints': [
             'cap = cap.views:blueprint',
@@ -155,21 +145,24 @@ setup(
             'cap_atlas = cap.modules.experiments.views.atlas:atlas_bp',
             'cap_lhcb = cap.modules.experiments.views.lhcb:lhcb_bp',
             'cap_cms = cap.modules.experiments.views.cms:cms_bp',
-            'cap_reana = cap.modules.reana.views:reana_bp',
+            'cap_workflows = cap.modules.workflows.views:workflows_bp',
             'cap_services = cap.modules.services.views:blueprint',
+            'cap_schemas = cap.modules.schemas.views:blueprint',
+            'cap_auth = cap.modules.auth.views:blueprint',
+            'cap_repos = cap.modules.repoimporter.views:repos_bp',
             'invenio_oauthclient = invenio_oauthclient.views.client:blueprint',
         ],
         'invenio_celery.tasks': [
-            'cap_deposit = cap.modules.deposit.loaders',
+            # 'cap_deposit = cap.modules.deposit.loaders',
             'cap_cms = cap.modules.experiments.tasks.cms',
             'cap_lhcb = cap.modules.experiments.tasks.lhcb',
         ],
+        'invenio_search.mappings': [],
         'invenio_pidstore.minters': [
             'cap_record_minter = '
             'cap.modules.records.minters:cap_record_minter',
             'cap_deposit_minter = '
             'cap.modules.deposit.minters:cap_deposit_minter',
-
         ],
         'invenio_pidstore.fetchers': [
             'cap_record_fetcher = '
@@ -178,25 +171,20 @@ setup(
             'cap.modules.deposit.fetchers:cap_deposit_fetcher',
         ],
         'invenio_records.jsonresolver': [
-            'cap = cap.modules.records.resolvers.cap',
-            'local = cap.modules.records.resolvers.local',
-        ],
-        'invenio_search.mappings': [
-            'deposits = cap.mappings',
-            'records = cap.mappings',
-        ],
-        'invenio_jsonschemas.schemas': [
-            'cap_schemas = cap.jsonschemas',
+            'schemas = cap.modules.schemas.resolvers',
         ],
         'invenio_db.models': [
-            # 'cap_reana_model = cap.modules.reana.models',
+            'cap_reana_model = cap.modules.workflows.models',
             'analysis_schema_model = cap.modules.schemas.models',
+            'status_check_model = cap.modules.services.models',
+            'auth = cap.modules.auth.models',
+            'git_model = cap.modules.repoimporter.models',
         ],
-        'invenio_db.alembic': [
-            'cap = cap:alembic',
-        ],
+        'invenio_db.alembic': ['cap = cap:alembic'],
         'invenio_config.module': [
             'cap = cap.config',
+            'cap_records = cap.modules.records.config',
+            'cap_deposit = cap.modules.deposit.config',
         ]
     },
     extras_require=extras_require,

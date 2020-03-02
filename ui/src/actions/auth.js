@@ -1,7 +1,14 @@
 import axios from "axios";
+import { history } from "../store/configureStore";
+import cogoToast from "cogo-toast";
 
 export const AUTHENTICATED = "AUTHENTICATED";
 export const UNAUTHENTICATED = "UNAUTHENTICATED";
+
+export const INIT_CURRENT_USER_REQUEST = "INIT_CURRENT_USER_REQUEST";
+export const INIT_CURRENT_USER_SUCCESS = "INIT_CURRENT_USER_SUCCESS";
+export const INIT_CURRENT_USER_ERROR = "INIT_CURRENT_USER_ERROR";
+
 export const LOGIN_REQUEST = "LOGIN_REQUEST";
 export const LOGIN_SUCCESS = "LOGIN_SUCCESS";
 export const LOGIN_ERROR = "LOGIN_ERROR";
@@ -15,6 +22,18 @@ export const CREATE_TOKEN_SUCCESS = "CREATE_TOKEN_SUCCESS";
 export const CREATE_TOKEN_ERROR = "CREATE_TOKEN_ERROR";
 export const REVOKE_TOKEN_SUCCESS = "REVOKE_TOKEN_SUCCESS";
 export const REVOKE_TOKEN_ERROR = "REVOKE_TOKEN_ERROR";
+
+export const INTEGRATIONS_UPDATE = "INTEGRATIONS_UPDATE";
+
+export function initCurrentUserRequest() {
+  return { type: INIT_CURRENT_USER_REQUEST };
+}
+export function initCurrentUserSuccess(user) {
+  return { type: INIT_CURRENT_USER_SUCCESS, user };
+}
+export function initCurrentUserError(error) {
+  return { type: INIT_CURRENT_USER_ERROR, error };
+}
 
 export function loginRequest() {
   return { type: LOGIN_REQUEST };
@@ -68,16 +87,19 @@ export function loginLocalUser(data) {
   return function(dispatch) {
     dispatch(loginRequest());
 
-    let uri = "/api/login/local";
+    let uri = `/api/login/local?next=${data.next}`;
 
     axios
       .post(uri, data)
-      .then(function() {
+      .then(function(response) {
         let token = "12345";
 
         localStorage.setItem("token", token);
 
-        dispatch(initCurrentUser());
+        // if the user tried to access priviledged location without login
+        const { next } = response.data;
+
+        dispatch(initCurrentUser(next));
       })
       .catch(function(error) {
         dispatch(
@@ -90,25 +112,76 @@ export function loginLocalUser(data) {
   };
 }
 
-export function initCurrentUser() {
+export function initCurrentUser(next = undefined) {
   return function(dispatch) {
+    dispatch(initCurrentUserRequest());
     axios
       .get("/api/me")
       .then(function(response) {
         let { id, deposit_groups } = response.data;
-
         localStorage.setItem("token", id);
         dispatch(
           loginSuccess({
             userId: id,
             token: id,
             profile: response.data,
-            depositGroups: deposit_groups
+            depositGroups: deposit_groups,
+            permissions: deposit_groups.length === 0 ? false : true
           })
         );
+        dispatch(initCurrentUserSuccess());
+
+        // if next is defined
+        if (next) {
+          history.push(next);
+        }
       })
       .catch(function() {
         dispatch(clearAuth());
+        dispatch(initCurrentUserError());
+      });
+  };
+}
+
+export function updateIntegrations() {
+  return function(dispatch) {
+    axios
+      .get("/api/me")
+      .then(function(response) {
+        let { profile: { services: integrations = {} } = {} } = response.data;
+        dispatch({
+          type: INTEGRATIONS_UPDATE,
+          integrations
+        });
+      })
+      .catch(function() {});
+  };
+}
+
+export function removeIntegrations(service) {
+  return function(dispatch) {
+    axios
+      .get(`/api/auth/disconnect/${service}`)
+      .then(function() {
+        axios
+          .get("/api/me")
+          .then(function(response) {
+            let {
+              profile: { services: integrations = {} } = {}
+            } = response.data;
+            dispatch({
+              type: INTEGRATIONS_UPDATE,
+              integrations
+            });
+          })
+          .catch(function() {});
+      })
+      .catch(function(error) {
+        cogoToast.error(error.response.data.message, {
+          position: "top-center",
+          bar: { size: "0" },
+          hideAfter: 3
+        });
       });
   };
 }

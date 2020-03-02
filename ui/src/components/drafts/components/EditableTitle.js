@@ -9,7 +9,7 @@ import Label from "grommet/components/Label";
 import CheckmarkIcon from "grommet/components/icons/base/Checkmark";
 import CloseIcon from "grommet/components/icons/base/Close";
 
-import { updateGeneralTitle } from "../../../actions/drafts";
+import { updateGeneralTitle } from "../../../actions/draftItem";
 
 class EditableTitle extends React.Component {
   constructor(props) {
@@ -23,8 +23,9 @@ class EditableTitle extends React.Component {
   }
 
   _focusInput = () => {
+    let { general_title } = this.props.metadata;
     this.setState({
-      titleValue: this.props.general_title || "Untitled document",
+      titleValue: general_title || "Untitled document",
       editTitle: true
     });
   };
@@ -63,9 +64,10 @@ class EditableTitle extends React.Component {
   };
 
   render() {
+    let { general_title } = this.props.metadata;
     return this.state.editTitle ? (
-      <Box direction="row" wrap={false}>
-        <Label margin="small" direction="row">
+      <Box flex={true} direction="row" wrap={false} pad="none">
+        <Label margin="none" direction="row">
           <input
             key="draft-input"
             style={{ padding: 0, border: "1px solid #fff", borderRadius: 0 }}
@@ -81,34 +83,27 @@ class EditableTitle extends React.Component {
           >
             <CheckmarkIcon colorIndex="light-1" size="xsmall" />
           </Box>
-          <Box
-            pad={{ horizontal: "small" }}
-            margin="none"
-            onClick={this._unedit.bind(this)}
-          >
+          <Box margin="none" onClick={this._unedit.bind(this)}>
             <CloseIcon colorIndex="light-1" size="xsmall" />
           </Box>
         </Box>
       </Box>
     ) : (
-      <Box pad="small" direction="row" wrap={false}>
+      <Box flex={true} direction="row" wrap={false}>
         <Box
           key="draft-title"
           onMouseEnter={this._hoverIn}
           onMouseLeave={this._hoverOut}
           onClick={this._focusInput}
-          margin={{ right: "small" }}
+          pad="none"
           style={{
             border: this.state.hoverTitle
               ? "1px solid #fff"
-              : "1px solid transparent",
-            marginLeft: "-1px",
-            paddingLeft: "5px"
+              : "1px solid transparent"
           }}
         >
           <Label align="start" pad="none" margin="none">
-            {" "}
-            {this.props.general_title || "Untitled document"}
+            {general_title || "Untitled document"}
           </Label>
         </Box>
       </Box>
@@ -117,18 +112,16 @@ class EditableTitle extends React.Component {
 }
 
 EditableTitle.propTypes = {
-  general_title: PropTypes.string,
+  metadata: PropTypes.object,
   updateGeneralTitle: PropTypes.func,
   anaType: PropTypes.string
 };
 
 function mapStateToProps(state) {
   return {
-    general_title: state.drafts.getIn([
-      "current_item",
-      "general_title",
-      "title"
-    ])
+    metadata: state.draftItem.get("metadata"),
+    loading: state.draftItem.get("loading"),
+    generalTitleLoading: state.draftItem.get("generalTitleLoading")
   };
 }
 

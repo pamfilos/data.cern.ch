@@ -21,108 +21,43 @@
 # In applying this license, CERN does not
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
-
-
 """CAP Basic Serializers."""
 
 from __future__ import absolute_import, print_function
 
 from invenio_accounts.models import User
-from invenio_records_files.api import Record
+from invenio_pidstore.models import PersistentIdentifier
 from invenio_records_rest.serializers.json import JSONSerializer
-from sqlalchemy.orm.exc import NoResultFound
-
-from cap.modules.deposit.api import CAPDeposit
-from cap.modules.deposit.permissions import (AdminDepositPermission,
-                                             UpdateDepositPermission)
 
 
-class CAPSchemaSerializer(JSONSerializer):
+class RecordSerializer(JSONSerializer):
     """Serializer for records v1 in JSON."""
-
-    def _transform_record_owners(self, result):
-        """Replace owners id with email."""
-        # TOFIX for fixtures loding
-        try:
-            owner = User.query.filter_by(
-                id=result['metadata']['_deposit']['owners'][0]
-            ).one()
-
-            result['metadata']['_deposit']['owners'][0] = owner.email
-        except (NoResultFound, IndexError):
-            pass
-
-        return result
-
-    def _get_user_rights_to_record(self, deposit, result):
-        result['can_edit'] = UpdateDepositPermission(deposit).can()
-        result['can_admin'] = AdminDepositPermission(deposit).can()
-
-        return result
-
-    def preprocess_record(self, pid, record, links_factory=None, **kwargs):
-        """Include files for single record retrievals."""
-        result = super(CAPSchemaSerializer, self).preprocess_record(
-            pid, record, links_factory=links_factory
-        )
-
-        result.get('metadata', {}).pop('_access', None)
-
-        if isinstance(record, Record) and record.files:
-            result['files'] = record['_files']
-
-        result = self._transform_record_owners(result)
-
-        return result
-
     def preprocess_search_hit(self, pid, record_hit, links_factory=None):
-        """."""
-        result = super(CAPSchemaSerializer, self).preprocess_search_hit(
-            pid, record_hit, links_factory=links_factory
-        )
-        deposit = CAPDeposit.get_record(record_hit['_id'])
+        """Fetch PID object for records retrievals from ES."""
+        pid = PersistentIdentifier.get(pid_type=pid.pid_type,
+                                       pid_value=pid.pid_value)
 
-        result = self._get_user_rights_to_record(deposit, result)
-        result = self._transform_record_owners(result)
+        result = super(RecordSerializer,
+                       self).preprocess_search_hit(pid,
+                                                   record_hit,
+                                                   links_factory=links_factory)
 
         return result
 
 
 class BasicJSONSerializer(JSONSerializer):
     """Serializer for deposit client in JSON."""
-
-    def _filter_record_fields(self, record):
-        metadata = record.get('metadata', {})
-
-        record['metadata'] = {k: v for k, v in metadata.items()
-                              if not k.startswith('_')}
-
-        return record
-
-    def preprocess_record(self, pid, record, links_factory=None, **kwargs):
-        """Remove unnecessary values for client."""
-        result = super(BasicJSONSerializer, self).preprocess_record(
-            pid, record, links_factory=links_factory
-        )
-        return self._filter_record_fields(result)
-
-    def preprocess_search_hit(self, pid, record_hit, links_factory=None):
-        """."""
-        result = super(BasicJSONSerializer, self).preprocess_search_hit(
-            pid, record_hit, links_factory=links_factory
-        )
-
-        return self._filter_record_fields(result)
+    pass
 
 
 class PermissionsJSONSerializer(JSONSerializer):
     """Serializer for returning deposit permissions in JSON."""
-
     def preprocess_record(self, pid, record, links_factory=None, **kwargs):
         """Remove unnecessary values for client."""
-        result = super(PermissionsJSONSerializer, self).preprocess_record(
-            pid, record, links_factory=links_factory
-        )
+        result = super(PermissionsJSONSerializer,
+                       self).preprocess_record(pid,
+                                               record,
+                                               links_factory=links_factory)
 
         result['permissions'] = result.get('metadata', {}).get('_access', {})
 

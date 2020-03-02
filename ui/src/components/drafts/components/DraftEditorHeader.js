@@ -2,77 +2,108 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import { connect } from "react-redux";
+import cogoToast from "cogo-toast";
+import _isEmpty from "lodash/isEmpty";
 
 import Box from "grommet/components/Box";
 import Menu from "grommet/components/Menu";
+import Spinning from "grommet/components/icons/Spinning";
 
-import {
-  CreateAnchor,
-  SaveAnchor,
-  SettingsAnchor,
-  ShareAnchor,
-  DiscardAnchor,
-  DeleteAnchor,
-  DraftMessage
-} from "./DraftActionsButtons";
-
-import EditableTitle from "./EditableTitle";
+import { SaveAnchor, DraftMessage } from "./Buttons";
 
 import {
   createDraft,
-  publishDraft,
-  deleteDraft,
+  createDraftError,
   updateDraft,
-  discardDraft,
   editPublished,
   toggleActionsLayer
-} from "../../../actions/drafts";
-
-import DragIcon from "grommet/components/icons/base/Drag";
-import DraftActionsLayer from "./DraftActionsLayer";
+  // togglePreviewer
+} from "../../../actions/draftItem";
+import { withRouter } from "react-router";
 
 class DraftEditorHeader extends React.Component {
-  constructor(props) {
-    super(props);
+  _validateFormData = () => {
+    // TOFIX maybe fetch formData from store instead of ref
+    const formData = this.props.formRef.current
+      ? this.props.formRef.current.props.formData
+      : null;
 
-    this.state = { actionType: null };
-  }
+    // let {
+    //   "current": {
+    //     props: {
+    //       "formData": formData = null,
+    //     } = {},
+    //     "validate": validate = null
+    //   } = {}
+    // } =  this.props.formRef;
 
-  _validateFormData() {
-    const formData = this.props.formRef.current.props.formData;
+    // const { errors = []} = this.props.formRef.current && this.props.formRef.current.validate(formData);
+
     const { errors } = this.props.formRef.current.validate(formData);
 
-    let e = new Event("save");
+    this.props.formRef.current.submit();
 
-    this.props.formRef.current.onSubmit(e);
+    let emptyObject = 0;
+
+    Object.values(formData).map(formItem => {
+      if (_isEmpty(formItem)) {
+        emptyObject++;
+      } else {
+        Object.values(formItem).map(value => {
+          if (_isEmpty(value)) {
+            emptyObject++;
+          }
+        });
+      }
+    });
+
+    let condition =
+      _isEmpty(formData) || emptyObject === Object.entries(formData).length;
 
     if (errors.length > 0) {
+      cogoToast.error("Make sure all the fields are properly filled in", {
+        position: "top-center",
+        heading: "Form could not be submitted",
+        bar: { size: "0" },
+        hideAfter: 5
+      });
+      return false;
+    }
+
+    if (condition) {
+      cogoToast.warn(
+        "Please add some content first, and try again saving again",
+        {
+          position: "top-center",
+          heading: "Form is empty",
+          bar: { size: "0" },
+          hideAfter: 3
+        }
+      );
       return false;
     } else {
       return true;
     }
-  }
+  };
 
-  _createDraft(schema_id) {
-    if (this._validateFormData())
+  _createDraft = schema_id => {
+    if (this._validateFormData()) {
       this.props.createDraft(this.props.formData, schema_id).finally(() => {
         this._validateFormData();
       });
-  }
+    }
+  };
 
   _saveData() {
     if (this._validateFormData()) {
-      let status =
-        this.props.draft && this.props.draft._deposit
-          ? this.props.draft._deposit.status
-          : null;
-      if (status !== "published")
+      let status = this.props.status;
+      if (status == "draft") {
         this.props
           .updateDraft({ ...this.props.formData }, this.props.draft_id)
           .finally(() => {
             this._validateFormData();
           });
-      else if (status == "published")
+      } else if (status == "published")
         this.props
           .editPublished(
             { ...this.props.formData, $schema: this.props.draft.$schema },
@@ -85,73 +116,28 @@ class DraftEditorHeader extends React.Component {
     }
   }
 
-  _publishData() {
-    this.props.publishDraft(this.props.draft_id);
-  }
-
-  _deleteDraft() {
-    this.props.deleteDraft(this.props.draft_id);
-  }
-
-  _discardData() {
-    this.props.discardDraft(this.props.draft_id);
-  }
-
   _actionHandler = type => () => {
-    this.props.toggleActionsLayer();
-    this.setState({ actionType: type });
+    this.props.toggleActionsLayer(type);
   };
 
   render() {
-    let status =
-      this.props.draft && this.props.draft._deposit
-        ? this.props.draft._deposit.status
-        : null;
+    // let status = this.props.status;
 
-    let isDraft = status == "draft" ? true : false;
-    let isPublishedOnce =
-      this.props.draft && this.props.draft._deposit
-        ? this.props.draft._deposit.pid
-        : null;
+    // let isDraft = status == "draft" ? true : false;
+    // let isPublishedOnce = this.props.recid ? true : false;
 
-    // let dg = null;
-    // if (this.props.schema) {
-    //   let schema = this.props.schema.split("/");
-
-    //   schema = schema[schema.length - 1];
-    //   schema = schema.split("-v0")[0];
-
-    //   let group =
-    //     this.props.depositGroups &&
-    //     this.props.depositGroups
-    //       .toJS()
-    //       .filter(dg => dg.deposit_group == schema);
-
-    //   if (group && group.length > 0) dg = group[0];
-    // }
-
-    if (
-      (this.props.error && this.props.error.status == 403) ||
-      (this.props.schemaError && this.props.schemaError.status == 403)
-    )
+    // ******** NEEDED
+    // if (
+    //   (this.props.errors && this.props.error.status == 403) ||
+    //   (this.props.schemaError && this.props.schemaError.status == 403)
+    // )
+    //   return null;
+    if (this.props.schemaErrors.length > 0) {
       return null;
+    }
 
     return (
       <Box flex={true} wrap={false} direction="row">
-        <Box
-          pad={{ horizontal: "small" }}
-          justify="start"
-          align="center"
-          direction="row"
-          flex={true}
-          wrap={false}
-        >
-          <Box margin={{ right: "small" }}>
-            <DragIcon size="xsmall" />
-          </Box>
-          <EditableTitle anaType={this.props.match.params.schema_id} />
-        </Box>
-
         <Box flex={true} justify="center" align="end">
           <DraftMessage
             key="draft-message"
@@ -160,24 +146,18 @@ class DraftEditorHeader extends React.Component {
           />
         </Box>
         <Box flex={false} direction="row" wrap={false} justify="end">
-          {isDraft ? (
-            <Menu
-              flex={false}
+          {this.props.loading ? (
+            <Box
+              flex={true}
               direction="row"
-              wrap={false}
-              responsive={false}
-              margin={{ vertical: "small", right: "large" }}
-              pad={{ horizontal: "small" }}
-              alignContent="center"
-              justify="center"
               align="center"
-              colorIndex="neutral-4"
+              margin={{ horizontal: "small" }}
             >
-              <ShareAnchor action={this._actionHandler("publish")} />
-            </Menu>
+              <Spinning />
+            </Box>
           ) : null}
 
-          {this.props.draft_id ? (
+          {this.props.draft_id && (
             <Menu
               flex={false}
               direction="row"
@@ -189,47 +169,16 @@ class DraftEditorHeader extends React.Component {
               justify="center"
               align="center"
             >
-              <SettingsAnchor draft_id={this.props.draft_id} />
-
-              {isDraft && !isPublishedOnce ? (
-                <DeleteAnchor action={this._actionHandler("delete")} />
-              ) : null}
-
-              {isDraft && isPublishedOnce ? (
-                <DiscardAnchor action={this._actionHandler("discard")} />
-              ) : null}
+              {/*
+                isDraft && isPublishedOnce ? (
+                  <DiscardAnchor action={this._actionHandler("discard")} />
+                ) : null
+              */}
 
               <SaveAnchor action={this._saveData.bind(this)} />
             </Menu>
-          ) : (
-            <Menu
-              flex={false}
-              direction="row"
-              wrap={false}
-              responsive={false}
-              size="small"
-              pad={{ horizontal: "small" }}
-              alignContent="center"
-              justify="center"
-              align="center"
-            >
-              <CreateAnchor
-                onClick={this._createDraft.bind(
-                  this,
-                  this.props.match.params.schema_id
-                )}
-              />
-            </Menu>
           )}
         </Box>
-        <DraftActionsLayer
-          key="action-layer"
-          type={this.state.actionType}
-          saveData={this._saveData.bind(this)}
-          publishData={this._publishData.bind(this)}
-          deleteDraft={this._deleteDraft.bind(this)}
-          discardData={this._discardData.bind(this)}
-        />
       </Box>
     );
   }
@@ -238,39 +187,57 @@ class DraftEditorHeader extends React.Component {
 DraftEditorHeader.propTypes = {
   match: PropTypes.object.isRequired,
   draft: PropTypes.object,
-  id: PropTypes.string
+  id: PropTypes.string,
+  formRef: PropTypes.object,
+  message: PropTypes.string,
+  loading: PropTypes.bool,
+  schemaErrors: PropTypes.array,
+  discardDraft: PropTypes.func,
+  updateDraft: PropTypes.func,
+  editPublished: PropTypes.func,
+  createDraft: PropTypes.func,
+  publishDraft: PropTypes.func,
+  formData: PropTypes.object,
+  toggleActionsLayer: PropTypes.func,
+  deleteDraft: PropTypes.func,
+  schema: PropTypes.object,
+  status: PropTypes.string,
+  draft_id: PropTypes.string,
+  recid: PropTypes.string
 };
 
 function mapStateToProps(state) {
   return {
-    draft_id: state.drafts.getIn(["current_item", "id"]),
-    draft: state.drafts.getIn(["current_item", "data"]),
-    schema: state.drafts.getIn(["current_item", "schema"]),
-    formData: state.drafts.getIn(["current_item", "formData"]),
-    depositGroups: state.auth.getIn(["currentUser", "depositGroups"]),
-
-    error: state.drafts.getIn(["current_item", "error"]),
-    schemaError: state.drafts.get("schemaError"),
-    loading: state.drafts.getIn(["current_item", "loading"]),
-    message: state.drafts.getIn(["current_item", "message"])
+    draft_id: state.draftItem.get("id"),
+    recid: state.draftItem.get("recid"),
+    draft: state.draftItem.get("metadata"),
+    schema: state.draftItem.get("schema"),
+    status: state.draftItem.get("status"),
+    // schema: state.draftItem.getIn(["current_item", "schema"]),
+    formData: state.draftItem.get("formData"),
+    // depositGroups: state.auth.getIn(["currentUser", "depositGroups"]),
+    errors: state.draftItem.get("errors"),
+    schemaErrors: state.draftItem.get("schemaErrors"),
+    loading: state.draftItem.get("loading")
+    // loading: state.draftItem.getIn(["current_item", "loading"]),
+    // message: state.drafts.getIn(["current_item", "message"])
   };
 }
 
 function mapDispatchToProps(dispatch) {
   return {
-    createDraft: (data, ana_type) =>
-      dispatch(createDraft(data, null, ana_type)),
+    createDraft: (data, ana_type) => dispatch(createDraft(data, ana_type)),
+    createDraftError: err => dispatch(createDraftError(err)),
     updateDraft: (data, draft_id) => dispatch(updateDraft(data, draft_id)),
-    publishDraft: draft_id => dispatch(publishDraft(draft_id)),
-    deleteDraft: draft_id => dispatch(deleteDraft(draft_id)),
-    discardDraft: draft_id => dispatch(discardDraft(draft_id)),
     editPublished: (data, schema, draft_id) =>
       dispatch(editPublished(data, schema, draft_id)),
-    toggleActionsLayer: () => dispatch(toggleActionsLayer())
+    toggleActionsLayer: type => dispatch(toggleActionsLayer(type))
   };
 }
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(DraftEditorHeader);
+export default withRouter(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps
+  )(DraftEditorHeader)
+);

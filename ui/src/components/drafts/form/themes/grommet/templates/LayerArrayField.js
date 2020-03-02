@@ -14,6 +14,7 @@ import FormUpIcon from "grommet/components/icons/base/FormUp";
 import FormDownIcon from "grommet/components/icons/base/FormDown";
 
 import pluralize from "pluralize";
+import ErrorFieldIndicator from "./ErrorFieldIndicator";
 
 class ArrayFieldTemplate extends React.Component {
   constructor(props) {
@@ -47,7 +48,6 @@ class ArrayFieldTemplate extends React.Component {
 
     return stringify.reduce(reducer, "");
   };
-
   render() {
     return (
       <Box flex={false} size={{ height: { max: "small" } }}>
@@ -56,50 +56,62 @@ class ArrayFieldTemplate extends React.Component {
             ? this.props.items.map(element => (
                 <ListItem
                   key={element.index}
-                  onClick={this._showLayer.bind(this, element.index)}
                   separator="none"
                   flex={true}
                   margin="none"
                   pad="none"
                   justify="between"
+                  onClick={() => {}}
                 >
                   <FormLayer
                     layerActive={this.state.layers[element.index]}
                     onClose={this._onFormLayerClose.bind(this, element.index)}
                     properties={element.children}
                     remove={
-                      element.hasRemove
+                      element.hasRemove && !this.props.readonly
                         ? element.onDropIndexClick(element.index)
                         : null
                     }
                   />
                   <Box flex={true} direction="row" wrap={false}>
-                    <Box flex={true} pad="small">
-                      <ItemBrief
-                        index={element.index}
-                        item={element.children.props.formData}
-                        options={element.children.props.uiSchema["ui:options"]}
-                        label={
-                          this.stringifyItem(
-                            element.children.props.uiSchema["ui:options"],
-                            element.children.props.formData
-                          ) ||
-                          `${
-                            this.props.title
-                              ? pluralize.singular(this.props.title)
-                              : "Item"
-                          } #${element.index + 1}`
-                        }
-                      />
-                    </Box>
+                    <ErrorFieldIndicator
+                      errors={this.props.formContext.ref}
+                      id={element.children.props.idSchema.$id}
+                    >
+                      <Box
+                        flex={true}
+                        pad="small"
+                        justify="center"
+                        onClick={this._showLayer.bind(this, element.index)}
+                      >
+                        <ItemBrief
+                          index={element.index}
+                          item={element.children.props.formData}
+                          options={
+                            element.children.props.uiSchema["ui:options"]
+                          }
+                          label={
+                            this.stringifyItem(
+                              element.children.props.uiSchema["ui:options"],
+                              element.children.props.formData
+                            ) ||
+                            `${
+                              this.props.title
+                                ? pluralize.singular(this.props.title)
+                                : "Item"
+                            } #${element.index + 1}`
+                          }
+                        />
+                      </Box>
+                    </ErrorFieldIndicator>
                     <Box direction="row" justify="between">
                       <Button
                         onClick={
-                          element.hasRemove
+                          element.hasRemove && !this.props.readonly
                             ? element.onDropIndexClick(element.index)
                             : null
                         }
-                        icon={<FormTrashIcon />}
+                        icon={this.props.readonly ? " " : <FormTrashIcon />}
                       />
                       {this.props.reorder
                         ? [
@@ -154,7 +166,9 @@ ArrayFieldTemplate.propTypes = {
   items: PropTypes.array,
   properties: PropTypes.object,
   onAddClick: PropTypes.func,
-  reorder: PropTypes.bool
+  reorder: PropTypes.bool,
+  readonly: PropTypes.bool,
+  formContext: PropTypes.object
 };
 
 export default ArrayFieldTemplate;

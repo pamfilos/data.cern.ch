@@ -1,37 +1,38 @@
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
-import PropTypes from 'prop-types';
-import Box from 'grommet/components/Box';
+import React, { Component } from "react";
+import { connect } from "react-redux";
+import PropTypes from "prop-types";
+import Box from "grommet/components/Box";
 
-export default (ComposedComponent) => {
+export default ComposedComponent => {
   class Authentication extends Component {
-    componentWillMount() {
-      if (!this.props.isLoggedIn) {
-        this.props.history.push({
-          pathname: '/login',
-          from: this.props.match.path
+    constructor(props) {
+      super(props);
+      if (!props.isLoggedIn) {
+        props.history.push({
+          pathname: "/login",
+          from: props.match.path,
+          search: `?next=${props.history.location.pathname}`,
+          state: { next: props.history.location.pathname }
         });
       }
     }
 
-    componentWillUpdate(nextProps) {
+    componentDidUpdate(nextProps) {
       if (!nextProps.isLoggedIn) {
-        this.props.history.push('/login');
+        const path = `/login?next=${nextProps.history.location.pathname}`;
+        this.props.history.push(path);
       }
     }
 
     PropTypes = {
-      router: PropTypes.object,
-    }
+      router: PropTypes.object
+    };
 
     render() {
+      if (!this.props.isLoggedIn) return null;
       let cc = <ComposedComponent {...this.props} />;
 
-      return (
-        <Box flex={true}>
-          {cc}
-        </Box>
-      );
+      return <Box flex={true}>{cc}</Box>;
     }
   }
 
@@ -42,7 +43,7 @@ export default (ComposedComponent) => {
   };
 
   function mapStateToProps(state) {
-    return {isLoggedIn: state.auth.get('isLoggedIn')};
+    return { isLoggedIn: state.auth.get("isLoggedIn") };
   }
 
   return connect(mapStateToProps)(Authentication);

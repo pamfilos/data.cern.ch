@@ -21,12 +21,10 @@
 # In applying this license, CERN does not
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
-
 """Cern Analysis Preservation utils for CADI database."""
 
 import json
-import re
-from HTMLParser import HTMLParser
+from itertools import islice
 
 import requests
 from elasticsearch_dsl import Q
@@ -36,53 +34,21 @@ from invenio_search import RecordsSearch
 
 from cap.modules.deposit.api import CAPDeposit
 from cap.modules.deposit.errors import DepositDoesNotExist
-from cap.modules.schemas.models import Schema
+from cap.modules.user.errors import DoesNotExistInLDAP
+from cap.modules.user.utils import (get_existing_or_register_role,
+                                    get_existing_or_register_user,
+                                    get_user_mail_from_ldap)
 
 from ..errors import ExternalAPIException
+from ..serializers import cadi_serializer
 from .common import generate_krb_cookie
-
-CADI_FIELD_TO_CAP_MAP = {
-    "name": "name",
-    "description": "description",
-    "contact": "contact",
-    "creatorDate": "created",
-    "URL": "twiki",
-    "PAPER": "paper",
-    "PAS": "pas",
-    "publicationStatus": "publication_status",
-    "status": "status",
-}
 
 
 def get_sso_cookie_for_cadi():
     """Get sso cookie needed to authenticate to CADI."""
     principal, kt = current_app.config['KRB_PRINCIPALS']['CADI']
     url = current_app.config['CADI_AUTH_URL']
-
     return generate_krb_cookie(principal, kt, url)
-
-
-def parse_cadi_entry(entry):
-    """Translate CADI entry to CAP compatible form.
-
-    :params dict entry: CADI entry
-
-    :rtype dict
-    """
-    parser = HTMLParser()
-    parsed_entry = {}
-
-    for cadi_key, cap_key in CADI_FIELD_TO_CAP_MAP.items():
-        val = entry.get(cadi_key)
-
-        if isinstance(val, basestring):
-            parsed_entry[cap_key] = parser.unescape(parser.unescape(val))
-        else:
-            parsed_entry[cap_key] = ''
-
-    # remove artefacts from name
-    cadi_id = re.sub('^d', '', entry.get('code', ''))
-    return cadi_id, parsed_entry
 
 
 def synchronize_cadi_entries(limit=None):
@@ -92,36 +58,83 @@ def synchronize_cadi_entries(limit=None):
 
     If analysis with given CADI id doesn't exist yet,
     new deposit will be created.
-    All members of CMS will get a read access.
+    All members of CMS will get a r access and cms-admin egroup rw access.
 
     :params int limit: number of entries to update
     """
+    def _cadi_deposit(cadi_id, cadi_info):
+        return {
+            '$ana_type': 'cms-analysis',
+            'cadi_info': cadi_info,
+            'general_title': cadi_info.get('name') or cadi_id,
+            '_fetched_from': 'cadi',
+            '_user_edited': False,
+            'basic_info': {
+                'cadi_id': cadi_id
+            }
+        }
+
     entries = get_all_from_cadi()
 
-    for entry in entries[:limit]:
-        cadi_id, cadi_info = parse_cadi_entry(entry)
+    for entry in islice(entries, limit):
+        cadi_info = cadi_serializer.dump(entry).data
+        cadi_id = cadi_info['cadi_id']
+        contact_name = cadi_info['contact'].split(' (')[0]
 
-        try:  # update if cadi deposit already exists
-            deposit = get_deposit_by_cadi_id(cadi_id)
+        with db.session.begin_nested():
+            try:  # update if cadi deposit already exists
+                deposit = get_deposit_by_cadi_id(cadi_id)
 
-            if deposit.get('cadi_info') == cadi_info:
-                print('No changes in cadi entry {}.'.format(cadi_id))
+                if deposit.get('cadi_info') == cadi_info:
+                    print('No changes in cadi entry {}.'.format(cadi_id))
 
-            else:
-                deposit['cadi_info'] = cadi_info
+                else:
+                    deposit['cadi_info'] = cadi_info
+                    deposit.commit()
+                    print('Cadi entry {} updated.'.format(cadi_id))
+
+            except DepositDoesNotExist:
+                cadi_deposit = _cadi_deposit(cadi_id, cadi_info)
+                deposit = CAPDeposit.create(data=cadi_deposit, owner=None)
+
+                try:
+                    contact_mail = get_user_mail_from_ldap(contact_name)
+                    role = get_existing_or_register_user(contact_mail)
+                    deposit._add_user_permissions(
+                        role,
+                        ['deposit-read', 'deposit-update', 'deposit-admin'],
+                        db.session)
+                except DoesNotExistInLDAP:
+                    print('Couldnt give access to {} - not in LDAP'.format(
+                        contact_mail))
+
+                for group in get_cadi_admin_roles(cadi_id):
+                    deposit._add_egroup_permissions(
+                        group,
+                        ['deposit-read', 'deposit-update', 'deposit-admin'],
+                        db.session)
+
+                deposit._add_experiment_permissions('CMS', ['deposit-read'])
+
                 deposit.commit()
-                db.session.commit()
+                print('Cadi entry {} added.'.format(cadi_id))
 
-                print('Cadi entry {} updated.'.format(cadi_id))
+        db.session.commit()
 
-        except (DepositDoesNotExist):
-            cadi_deposit = build_cadi_deposit(cadi_id, cadi_info)
-            deposit = CAPDeposit.create(data=cadi_deposit, owner=None)
-            deposit._add_experiment_permissions('CMS', ['deposit-read'])
-            deposit.commit()
-            db.session.commit()
 
-            print('Cadi entry {} added.'.format(cadi_id))
+def get_cadi_admin_roles(cadi_id):
+    roles = []
+    for egroup in (
+            current_app.config['CMS_COORDINATORS_EGROUP'],
+            current_app.config['CMS_ADMIN_EGROUP'],
+            current_app.config['CMS_CONVENERS_EGROUP'].format(wg=cadi_id[:3]),
+    ):
+        try:
+            roles.append(get_existing_or_register_role(egroup))
+        except DoesNotExistInLDAP:
+            pass
+
+    return roles
 
 
 def get_from_cadi_by_id(cadi_id):
@@ -131,7 +144,8 @@ def get_from_cadi_by_id(cadi_id):
     :returns: entry from CADI
     :rtype dict
     """
-    url = current_app.config.get('CADI_GET_RECORD_URL').format(id=cadi_id)
+    url = current_app.config.get('CADI_GET_RECORD_URL').format(
+        id=cadi_id.upper())
 
     cookie = get_sso_cookie_for_cadi()
     response = requests.get(url, cookies=cookie)
@@ -167,24 +181,10 @@ def get_all_from_cadi():
     all_entries = response.json()['data']
 
     # filter out inactive or superseded entries
-    entries = [entry for entry in all_entries
-               if entry['status'] not in ['Inactive', 'SUPERSEDED']]
+    entries = (entry for entry in all_entries
+               if entry['status'] not in ['Inactive', 'SUPERSEDED', 'Free'])
 
     return entries
-
-
-def build_cadi_deposit(cadi_id, cadi_info):
-    """Build CMS analysis deposit, based on CADI entry."""
-    schema = Schema.get_latest('deposits/records/cms-analysis').fullpath
-
-    return {
-        '$schema': schema,
-        'cadi_info': cadi_info,
-        'general_title': cadi_id,
-        'basic_info': {
-            'cadi_id': cadi_id
-        }
-    }
 
 
 def get_deposit_by_cadi_id(cadi_id):
@@ -196,7 +196,7 @@ def get_deposit_by_cadi_id(cadi_id):
     """
     rs = RecordsSearch(index='deposits-records')
 
-    res = rs.query(Q('match', basic_info__cadi_id__keyword=cadi_id)) \
+    res = rs.query(Q('match', basic_info__cadi_id=cadi_id)) \
         .execute().hits.hits
 
     if not res:

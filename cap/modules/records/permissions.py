@@ -21,7 +21,6 @@
 # In applying this license, CERN does not
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
-
 """CAP Record permissions."""
 
 from functools import partial
@@ -65,7 +64,7 @@ def record_delete_need(record):
 
 
 class RecordPermission(Permission):
-    """Generic deposit permission."""
+    """Generic record permission."""
 
     actions = {
         "read": record_read_need,
@@ -85,14 +84,11 @@ class RecordPermission(Permission):
         if action in self.actions:
             _needs.add(self.actions[action](record))
 
-        self._needs.update(_needs)
-
-        super(RecordPermission, self).__init__(*self._needs)
+        super(RecordPermission, self).__init__(*_needs)
 
 
 class CreateRecordPermission(Permission):
-    """Deposit create permission."""
-
+    """Record create permission."""
     def __init__(self, record):
         """Initialize state."""
         record = request.get_json(force=True)
@@ -101,8 +97,7 @@ class CreateRecordPermission(Permission):
 
 
 class ReadRecordPermission(RecordPermission):
-    """Deposit read permission."""
-
+    """Record read permission."""
     def __init__(self, record):
         """Initialize state."""
         self._needs = set()
@@ -111,19 +106,24 @@ class ReadRecordPermission(RecordPermission):
 
 
 class UpdateRecordPermission(RecordPermission):
-    """Deposit update permission."""
-
+    """Record update permission."""
     def __init__(self, record):
         """Initialize state."""
         super(UpdateRecordPermission, self).__init__(record, 'update')
 
 
 class DeleteRecordPermission(RecordPermission):
-    """Deposit delete permission."""
-
+    """Record delete permission."""
     def __init__(self, record):
         """Initialize state."""
         super(DeleteRecordPermission, self).__init__(record, 'delete')
+
+
+class AdminRecordPermission(RecordPermission):
+    """Record admin permission."""
+    def __init__(self, record):
+        """Initialize state."""
+        super(AdminRecordPermission, self).__init__(record, 'admin')
 
 
 def read_permission_factory(record):
@@ -144,3 +144,54 @@ def delete_permission_factory(record):
 def admin_permission_factory(record):
     """Admin permission factory."""
     return Permission(record_admin_need(record.id))
+
+
+class RecordFilesPermission(Permission):
+    """Permission for files in records (read and update access)."""
+
+    access_actions = {
+        'read': [
+            'bucket-read',
+            'bucket-read-versions',
+            'object-read',
+            'object-read-version',
+            'multipart-read',
+        ],
+        'update': [
+            'bucket-read',
+            'bucket-read-versions',
+            'object-read',
+            'object-read-version',
+            'multipart-read',
+            'bucket-update',
+            'bucket-listmultiparts',
+            'object-delete',
+            'object-delete-version',
+            'multipart-delete',
+        ]
+    }
+
+    access_needs = {
+        "read": record_read_need,
+        "update": record_update_need,
+        "admin": record_admin_need,
+    }
+
+    def __init__(self, record, action):
+        """Constructor.
+
+        Args:
+            record: record to which access is requested.
+        """
+        _needs = set()
+        _needs.add(self.access_needs['admin'](record))
+        exp = record.json.get('_experiment')
+
+        if exp:
+            _needs.add(exp_need_factory(exp))
+
+        for access, actions in self.access_actions.items():
+            if action in actions:
+                _needs.add(self.access_needs[access](record))
+
+        super(RecordFilesPermission, self).__init__(*_needs)

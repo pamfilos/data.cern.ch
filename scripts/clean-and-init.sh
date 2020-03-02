@@ -26,26 +26,21 @@
 
 
 # Destroy db and indexes
-cap db drop --yes-i-know
-cap index destroy --force --yes-i-know
+cap db destroy --yes-i-know
 
 # Flush redis cache
 redis-cli flushall
 
 # Init and create db and indexes
 cap db init
-cap db create
-
-# Create indexes:
-cap index init
+cap alembic upgrade heads
 
 # Create default location for files
 if [[ -z "${DEBUG}" ]]; then
-  cap files location local var/data --default 
+  cap files location local var/data --default
+  curl -XDELETE http://localhost:9200/_all
 fi
 
-
-cap alembic upgrade heads
 # install schemas in db
 cap fixtures schemas
 
@@ -67,14 +62,14 @@ cap roles create data-preservation-admins@cern.ch
 
 cap roles add info@inveniosoftware.org analysis-preservation-support@cern.ch
 cap access allow superuser-access role analysis-preservation-support@cern.ch
-cap access allow superuser-access role data-preservation-admins@cern.ch 
+cap access allow superuser-access role data-preservation-admins@cern.ch
 
 cap roles add cms@inveniosoftware.org cms-members@cern.ch
 cap roles add alice@inveniosoftware.org alice-member@cern.ch
 cap roles add atlas@inveniosoftware.org atlas-active-members-all@cern.ch
 cap roles add lhcb@inveniosoftware.org lhcb-general@cern.ch
 
-cap access allow cms-access role cms-members@cern.ch 
-cap access allow lhcb-access role lhcb-general@cern.ch 
-cap access allow alice-access role alice-member@cern.ch 
-cap access allow atlas-access role atlas-active-members-all@cern.ch 
+cap access allow cms-access role cms-members@cern.ch
+cap access allow lhcb-access role lhcb-general@cern.ch
+cap access allow alice-access role alice-member@cern.ch
+cap access allow atlas-access role atlas-active-members-all@cern.ch

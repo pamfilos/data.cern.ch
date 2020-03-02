@@ -5,39 +5,24 @@
 # CERN Analysis Preservation is free software; you can redistribute it
 # and/or modify it under the terms of the MIT License; see LICENSE file
 # for more details.
-
 """Default configuration for CERN Analysis Preservation."""
 
 from __future__ import absolute_import, print_function
 
-import copy
 import os
 from datetime import timedelta
 from os.path import dirname, join
 
-from flask import request
-
-from cap.modules.deposit.permissions import (AdminDepositPermission,
-                                             CreateDepositPermission,
-                                             ReadDepositPermission)
-from cap.modules.oauthclient.contrib.cern import disconnect_handler
-from cap.modules.oauthclient.rest_handlers import (authorized_signup_handler,
-                                                   signup_handler)
-from cap.modules.records.permissions import ReadRecordPermission
-from cap.modules.search.facets import nested_filter
+import requests
 from flask_principal import RoleNeed
-from invenio_deposit import config as deposit_config
-from invenio_deposit.config import DEPOSIT_REST_SORT_OPTIONS
-from invenio_deposit.scopes import write_scope
-from invenio_deposit.utils import check_oauth2_scope
 from invenio_oauthclient.contrib.cern import REMOTE_APP as CERN_REMOTE_APP
-from invenio_records_rest.config import (RECORDS_REST_ENDPOINTS,
-                                         RECORDS_REST_FACETS,
-                                         RECORDS_REST_SORT_OPTIONS)
-from invenio_records_rest.facets import terms_filter
 from invenio_records_rest.utils import allow_all, deny_all
 from jsonresolver import JSONResolver
 from jsonresolver.contrib.jsonref import json_loader_factory
+
+from cap.modules.oauthclient.contrib.cern import disconnect_handler
+from cap.modules.oauthclient.rest_handlers import (authorized_signup_handler,
+                                                   signup_handler)
 
 
 def _(x):
@@ -45,10 +30,62 @@ def _(x):
     return x
 
 
+# ************************************ #
+# GOOD TO KNOW!
+#
+# Enviromental variables with INVENIO_ prefix
+# will override variables set in the config.py
+# ex.
+#  ZENODO_ACCESS_TOKEN = 'CHANGE_ME'
+#  will be overriden if INVENIO_ZENODO_ACCESS_TOKEN
+#  is set in the ENVIRONMENT running the app
+#
+# ************************************ #
+
+# Datadir
+# =======
+DATADIR = join(dirname(__file__), 'data')
+
+# Path to app root dir
+APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+# Debug
+# =====
+# Flask-DebugToolbar is by default enabled when the application is running in
+# debug mode. More configuration options are available at
+# https://flask-debugtoolbar.readthedocs.io/en/latest/#configuration
+#: Switches off incept of redirects by Flask-DebugToolbar.
+DEBUG_TB_INTERCEPT_REDIRECTS = False
+
+DEBUG_MODE = str(os.environ.get('DEBUG_MODE')).lower() == 'true'
+
+if DEBUG_MODE:
+    DEBUG = True
+else:
+    DEBUG = False
+
+if DEBUG:
+    REST_ENABLE_CORS = True
+    APP_ENABLE_SECURE_HEADERS = False
+
+
+# Cache
+# =========
+#: Redis Cache Host
+CACHE_REDIS_HOST = os.environ.get("CACHE_REDIS_HOST", "localhost")
+#: Redis Cache Port
+CACHE_REDIS_PORT = os.environ.get("CACHE_REDIS_PORT", 6379)
+#: Redis Cache base url
+CACHE_REDIS_BASE_URL = "redis://{0}:{1}".format(
+    CACHE_REDIS_HOST, CACHE_REDIS_PORT)
+#: URL of Redis db.
+CACHE_REDIS_URL = "{0}/0".format(CACHE_REDIS_BASE_URL)
+
+
 # Rate limiting
 # =============
 #: Storage for ratelimiter.
-RATELIMIT_STORAGE_URL = 'redis://localhost:6379/3'
+RATELIMIT_STORAGE_URL = "{0}/3".format(CACHE_REDIS_BASE_URL)
 
 # I18N
 # ====
@@ -57,9 +94,7 @@ BABEL_DEFAULT_LANGUAGE = 'en'
 #: Default time zone
 BABEL_DEFAULT_TIMEZONE = 'Europe/Zurich'
 #: Other supported languages (do not include the default language in list).
-I18N_LANGUAGES = [
-    ('fr', _('French'))
-]
+I18N_LANGUAGES = [('fr', _('French'))]
 
 # Email configuration
 # ===================
@@ -69,7 +104,7 @@ SUPPORT_EMAIL = "analysis-preservation-support@cern.ch"
 MAIL_DEBUG = False
 MAIL_SUPPRESS_SEND = True
 
-# Accounts
+# Flask Security
 # ========
 #: Allow user to confirm their email address.
 SECURITY_CONFIRMABLE = False
@@ -82,8 +117,6 @@ SECURITY_EMAIL_SENDER = SUPPORT_EMAIL
 #: Email subject for account registration emails.
 SECURITY_EMAIL_SUBJECT_REGISTER = _(
     "Welcome to CERN Analysis Preservation!")
-#: Redis session storage URL.
-ACCOUNTS_SESSION_REDIS_URL = 'redis://localhost:6379/1'
 
 # Celery configuration
 # ====================
@@ -91,7 +124,7 @@ BROKER_URL = 'amqp://guest:guest@localhost:5672/'
 #: URL of message broker for Celery (default is RabbitMQ).
 CELERY_BROKER_URL = 'amqp://guest:guest@localhost:5672/'
 #: URL of backend for result storage (default is Redis).
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/2'
+CELERY_RESULT_BACKEND = '{0}/2'.format(CACHE_REDIS_BASE_URL)
 #: Scheduled tasks configuration (aka cronjobs).
 CELERY_BEAT_SCHEDULE = {
     'indexer': {
@@ -106,20 +139,44 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'cap.modules.experiments.tasks.cms.synchronize_with_cadi',
         'schedule': timedelta(days=1),
     },
+    'ping_webhooks': {
+        'task': 'cap.modules.repoimporter.tasks.ping_webhooks',
+        'schedule': timedelta(hours=12),
+    },
+    'das_harvester': {
+        'task': 'cap.modules.experiments.tasks.cms.harvest_das',
+        'schedule': timedelta(days=1),
+    },
 }
+#: Accepted content types, used for serializing objects
+#: when sending tasks to Celery (json default in 4.0)
+# CELERY_ACCEPT_CONTENT = ['pickle', 'json']
 
 # Database
 # ========
 #: Database URI including user and password
-SQLALCHEMY_DATABASE_URI = os.environ.get(
-    'APP_SQLALCHEMY_DATABASE_URI',
-    'postgresql+psycopg2://cap:cap@localhost/cap'
+POSTGRESQL_CONFIGS = (
+    os.environ.get("POSTGRESQL_USER"),
+    os.environ.get("POSTGRESQL_PASSWORD"),
+    os.environ.get("POSTGRESQL_HOST"),
+    os.environ.get("POSTGRESQL_PORT"),
+    os.environ.get("POSTGRESQL_DATABASE"),
 )
+if all(POSTGRESQL_CONFIGS):
+    SQLALCHEMY_DATABASE_URI = 'postgresql+psycopg2://{}:{}@{}:{}/{}'.format(
+        *POSTGRESQL_CONFIGS
+    )
+else:
+    SQLALCHEMY_DATABASE_URI = 'postgresql+psycopg2://cap:cap@localhost/cap'
 
 # JSONSchemas
 # ===========
 #: Hostname used in URLs for local JSONSchemas.
 JSONSCHEMAS_HOST = 'analysispreservation.cern.ch'
+
+SCHEMAS_DEPOSIT_PREFIX = 'deposits/records/'
+SCHEMAS_RECORD_PREFIX = 'records/'
+SCHEMAS_OPTIONS_PREFIX = 'options/'
 
 # Flask configuration
 # ===================
@@ -128,7 +185,7 @@ JSONSCHEMAS_HOST = 'analysispreservation.cern.ch'
 
 #: Secret key - each installation (dev, production, ...) needs a separate key.
 #: It should be changed before deploying.
-SECRET_KEY = 'CHANGE_ME'
+SECRET_KEY = "changeme"
 #: Max upload size for form data via application/mulitpart-formdata.
 MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100 MiB
 #: Sets cookie with the secure flag by default
@@ -147,264 +204,23 @@ APP_ALLOWED_HOSTS = [
     'analysispreservation-qa.cern.ch'
 ]
 
-
 if os.environ.get('DEV_HOST', False):
     APP_ALLOWED_HOSTS.append(os.environ.get('DEV_HOST'))
-
 
 # OAI-PMH
 # =======
 OAISERVER_ID_PREFIX = 'oai:analysispreservation.cern.ch:'
 
-# Debug
-# =====
-# Flask-DebugToolbar is by default enabled when the application is running in
-# debug mode. More configuration options are available at
-# https://flask-debugtoolbar.readthedocs.io/en/latest/#configuration
-
-#: Switches off incept of redirects by Flask-DebugToolbar.
-DEBUG_TB_INTERCEPT_REDIRECTS = False
-
-
-# =======================================================================
-# =======================================================================
-# =======================================================================
-
-
-DEBUG_MODE = os.environ.get('DEBUG_MODE', False)
-if DEBUG_MODE == 'True':
-    DEBUG = True
-else:
-    DEBUG = False
-
-if DEBUG:
-    REST_ENABLE_CORS = True
-    APP_ENABLE_SECURE_HEADERS = False
-
-
-# Path to app root dir
-APP_ROOT = os.path.dirname(os.path.abspath(__file__))
-
-# Cache
-# =========
-#: Cache key prefix
-CACHE_KEY_PREFIX = "cache::"
-#: Host
-CACHE_REDIS_HOST = "localhost"
-#: Port
-CACHE_REDIS_PORT = 6379
-#: DB
-CACHE_REDIS_DB = 0
-#: URL of Redis db.
-CACHE_REDIS_URL = "redis://{0}:{1}/{2}".format(
-    CACHE_REDIS_HOST, CACHE_REDIS_PORT, CACHE_REDIS_DB)
-#: Default cache type.
-CACHE_TYPE = "redis"
-#: Default cache URL for sessions.
-ACCESS_SESSION_REDIS_HOST = os.environ.get('APP_ACCESS_SESSION_REDIS_HOST',
-                                           'localhost')
-ACCOUNTS_SESSION_REDIS_URL = "redis://localhost:6379/2"
-#: Cache for storing access restrictions
-ACCESS_CACHE = 'cap.modules.cache:current_cache'
+# Accounts
+# ========
+#: Redis session storage URL.
+ACCOUNTS_SESSION_REDIS_URL = '{0}/1'.format(CACHE_REDIS_BASE_URL)
 
 #: E-Groups for superuser rights
 SUPERUSER_EGROUPS = [
     RoleNeed('analysis-preservation-support@cern.ch'),
     RoleNeed('data-preservation-admins@cern.ch'),
 ]
-
-# Records
-# =======
-#: Records sort/facets options
-RECORDS_REST_SORT_OPTIONS = dict(
-    records=dict(
-        bestmatch=dict(
-            title=_('Best match'),
-            fields=['_score'],
-            order=1,
-        ),
-        mostrecent=dict(
-            title=_('Most recent'),
-            fields=['_updated'],
-            default_order='desc',
-            order=2,
-        ),
-    )
-)
-RECORDS_REST_SORT_OPTIONS.update(DEPOSIT_REST_SORT_OPTIONS)
-
-#: Record search facets.
-# for aggregations, only ones starting with facet_ will be displayed on a page
-RECORDS_REST_FACETS = {
-    'deposits': {
-        'aggs': {
-            'facet_status': {
-                'terms': {
-                    'field': 'status.keyword'
-                }
-            },
-            'facet_type': {
-                'terms': {
-                    'field': '_type'
-                }
-            },
-            'facet_cadi_status': {
-                'terms': {
-                    'field': 'cadi_status'
-                }
-            },
-            'facet_publication_status': {
-                'terms': {
-                    'field': 'publication_status.keyword'
-                }
-            },
-            "particles": {
-                "nested": {
-                    "path": "main_measurements.signal_event_selection"
-                            ".physics_objects"
-                },
-                "aggs": {
-                    "facet_physics_objects": {
-                        "terms": {
-                            "field": "main_measurements.signal_event_selection"
-                                     ".physics_objects.object",
-                            "exclude": ""
-                        },
-                        "aggs": {
-                            "doc_count": {
-                                "reverse_nested": {}
-                            },
-                            "facet_physics_objects_type": {
-                                "terms": {
-                                    "field": "main_measurements"
-                                             ".signal_event_selection"
-                                             ".physics_objects"
-                                             ".object_type.keyword"
-                                },
-                                "aggs": {
-                                    "doc_count": {
-                                        "reverse_nested": {}
-                                    }
-                                }
-                            }
-                        }
-                    },
-                }
-            },
-        },
-        'post_filters': {
-            'type': terms_filter('_type'),
-            'status': terms_filter('status.keyword'),
-            'cadi_status': terms_filter('cadi_status'),
-            'publication_status': terms_filter('publication_status.keyword'),
-            'conference': terms_filter('conference'),
-            'physics_objects': nested_filter(
-                'main_measurements.signal_event_selection.physics_objects',
-                'main_measurements.signal_event_selection'
-                '.physics_objects.object'
-            ),
-            'physics_objects_type': nested_filter(
-                'main_measurements.signal_event_selection.physics_objects',
-                'main_measurements.signal_event_selection.physics_objects'
-                '.object_type.keyword'),
-        }
-    },
-    'records': {
-        'aggs': {
-            'facet_type': {
-                'terms': {
-                    'field': '_type'
-                }
-            },
-            'facet_cadi_status': {
-                'terms': {
-                    'field': 'cadi_status'
-                }
-            },
-            'facet_publication_status': {
-                'terms': {
-                    'field': 'publication_status.keyword'
-                }
-            },
-            "particles": {
-                "nested": {
-                    "path": "main_measurements.signal_event_selection"
-                            ".physics_objects"
-                },
-                "aggs": {
-                    "facet_physics_objects": {
-                        "terms": {
-                            "field": "main_measurements.signal_event_selection"
-                                     ".physics_objects.object",
-                            "exclude": ""
-                        },
-                        "aggs": {
-                            "doc_count": {
-                                "reverse_nested": {}
-                            },
-                            "facet_physics_objects_type": {
-                                "terms": {
-                                    "field": "main_measurements"
-                                             ".signal_event_selection"
-                                             ".physics_objects"
-                                             ".object_type.keyword"
-                                },
-                                "aggs": {
-                                    "doc_count": {
-                                        "reverse_nested": {}
-                                    }
-                                }
-                            }
-                        }
-                    },
-                }
-            },
-        },
-        'post_filters': {
-            'type': terms_filter('_type'),
-            'cadi_status': terms_filter('cadi_status'),
-            'publication_status': terms_filter('publication_status.keyword'),
-            'conference': terms_filter('conference'),
-            'physics_objects': nested_filter(
-                'main_measurements.signal_event_selection.physics_objects',
-                'main_measurements.signal_event_selection'
-                '.physics_objects.object'
-            ),
-            'physics_objects_type': nested_filter(
-                'main_measurements.signal_event_selection.physics_objects',
-                'main_measurements.signal_event_selection.physics_objects'
-                '.object_type.keyword'),
-        }
-    }
-}
-
-#: Records REST API endpoints.
-RECORDS_REST_ENDPOINTS = copy.deepcopy(RECORDS_REST_ENDPOINTS)
-RECORDS_REST_ENDPOINTS['recid'].update({
-    'record_class': 'cap.modules.records.api:CAPRecord',
-    'pid_fetcher': 'cap_record_fetcher',
-    'search_class': 'cap.modules.records.search:CAPRecordSearch',
-    'search_factory_imp': 'cap.modules.search.query'
-    ':cap_search_factory',
-    'record_serializers': {
-        'application/json': ('cap.modules.records.serializers'
-                             ':json_v1_response'),
-        'application/basic+json': ('cap.modules.records.serializers'
-                                   ':basic_json_v1_response')
-    },
-    'search_serializers': {
-        'application/json': ('cap.modules.records.serializers'
-                             ':json_v1_search'),
-        'application/basic+json': ('cap.modules.records.serializers'
-                                   ':basic_json_v1_search'),
-    },
-    'read_permission_factory_imp': check_oauth2_scope(
-        lambda record: ReadRecordPermission(record).can(),
-        write_scope.id),
-})
-
-#: Default api endpoint for LHCb db
-GRAPHENEDB_URL = 'http://datadependency.cern.ch:7474'
 
 #: Account-REST Configuration
 ACCOUNTS_REST_READ_ROLE_PERMISSION_FACTORY = deny_all
@@ -443,14 +259,14 @@ ACCOUNTS_REST_READ_USERS_LIST_PERMISSION_FACTORY = allow_all
 # Search
 # ======
 #: Default API endpoint for search UI.
-SEARCH_UI_SEARCH_API = '/api/deposits/'
+SEARCH_UI_SEARCH_API = '/api/deposits'
 
-#: Default ElasticSearch hosts
-es_user = os.environ.get('ELASTICSEARCH_USER')
-es_password = os.environ.get('ELASTICSEARCH_PASSWORD')
-if es_user and es_password:
+ELASTICSEARCH_USER = os.environ.get('ELASTICSEARCH_USER')
+ELASTICSEARCH_PASSWORD = os.environ.get('ELASTICSEARCH_PASSWORD')
+
+if ELASTICSEARCH_USER and ELASTICSEARCH_PASSWORD:
     es_params = dict(
-        http_auth=(es_user, es_password),
+        http_auth=(ELASTICSEARCH_USER, ELASTICSEARCH_PASSWORD),
         use_ssl=str(os.environ.get('ELASTICSEARCH_USE_SSL')).lower() == 'true',
         verify_certs=str(
             os.environ.get('ELASTICSEARCH_VERIFY_CERTS')).lower() == 'true',
@@ -467,6 +283,8 @@ SEARCH_ELASTIC_HOSTS = [
     )
 ]
 
+SEARCH_GET_MAPPINGS_IMP = 'cap.modules.schemas.imp.get_mappings'
+
 # Admin
 # ========
 ADMIN_PERMISSION_FACTORY =  \
@@ -482,18 +300,16 @@ CERN_APP_CREDENTIALS = {
 
 # Update CERN OAuth handlers - due to REST - mostly only redirect urls
 # and error flashing
-CERN_REMOTE_APP.update(dict(
-    authorized_handler=authorized_signup_handler,
-    disconnect_handler=disconnect_handler,
-))
+CERN_REMOTE_APP.update(
+    dict(
+        authorized_handler=authorized_signup_handler,
+        disconnect_handler=disconnect_handler,
+    ))
 
 CERN_REMOTE_APP['signup_handler']['view'] = signup_handler
 
 #: Defintion of OAuth client applications.
-OAUTHCLIENT_REMOTE_APPS = dict(
-    cern=CERN_REMOTE_APP,
-)
-
+OAUTHCLIENT_REMOTE_APPS = dict(cern=CERN_REMOTE_APP, )
 
 # JSON Schemas
 # ============
@@ -503,26 +319,17 @@ JSONSCHEMAS_ENDPOINT = '/schemas'
 
 JSONSCHEMAS_RESOLVE_SCHEMA = True
 
-JSONSCHEMAS_LOADER_CLS = json_loader_factory(JSONResolver(
-    plugins=[
-        'cap.modules.records.resolvers.local',
-        'cap.modules.records.resolvers.cap',
-    ],
-))
-
-JSONSCHEMAS_ROOT = os.path.join(APP_ROOT, 'jsonschemas')
-
-# directories with jsonschemas
-JSONSCHEMAS_DEPOSIT_DIR = 'deposits/records/'
-JSONSCHEMAS_RECORDS_DIR = 'records/'
-
-# WARNING: Do not share the secret key - especially do not commit it to
-# version control.
-SECRET_KEY = "changeme"
+JSONSCHEMAS_LOADER_CLS = json_loader_factory(
+    JSONResolver(plugins=[
+        'cap.modules.schemas.resolvers', 'cap.modules.schemas.resolvers_api'
+    ], ))
 
 # LHCb
 # ========
 #: Ana's database
+# TOFIX: Check below PR for more info
+# https://github.com/cernanalysispreservation/
+# analysispreservation.cern.ch/pull/663
 LHCB_ANA_DB = 'http://datadependency.cern.ch'
 LHCB_GETCOLLISIONDATA_URL = '{0}/getRecoStripSoft?propass='.format(LHCB_ANA_DB)
 LHCB_GETPLATFORM_URL = '{0}/getPlatform?app='.format(LHCB_ANA_DB)
@@ -530,8 +337,13 @@ LHCB_GETPLATFORM_URL = '{0}/getPlatform?app='.format(LHCB_ANA_DB)
 # CMS
 # ========
 #: Kerberos credentials
-CMS_USER_PRINCIPAL = os.environ.get('APP_CMS_USER_PRINCIPAL')
-CMS_USER_KEYTAB = os.environ.get('APP_CMS_USER_KEYTAB')
+CMS_USER_PRINCIPAL = os.environ.get("CMS_USER_PRINCIPAL")
+CMS_USER_KEYTAB = os.environ.get("CMS_USER_KEYTAB")
+
+CMS_ADMIN_EGROUP = 'cms-cap-admin@cern.ch'
+CMS_COORDINATORS_EGROUP = 'cms-physics-coordinator@cern.ch'
+CMS_CONVENERS_EGROUP = 'cms-phys-conveners-{wg}@cern.ch'
+
 #: CADI database
 CADI_AUTH_URL = 'https://icms.cern.ch/tools/api/cadiLine/BPH-13-009'
 CADI_GET_CHANGES_URL = 'https://icms.cern.ch/tools/api/updatedCadiLines/'
@@ -541,8 +353,8 @@ CADI_GET_RECORD_URL = 'https://icms.cern.ch/tools/api/cadiLine/{id}'
 # ATLAS
 # ========
 #: Glance database
-GLANCE_CLIENT_ID = os.environ.get('APP_GLANCE_CLIENT_ID')
-GLANCE_CLIENT_PASSWORD = os.environ.get('APP_GLANCE_CLIENT_PASSWORD')
+GLANCE_CLIENT_ID = 'CHANGE_ME'
+GLANCE_CLIENT_PASSWORD = 'CHANGE_ME'
 #: Glance API URLs
 GLANCE_GET_TOKEN_URL = \
     'https://oraweb.cern.ch/ords/atlr/atlas_authdb/oauth/token'
@@ -550,81 +362,6 @@ GLANCE_GET_ALL_URL = \
     'https://oraweb.cern.ch/ords/atlr/atlas_authdb/atlas/analysis/analysis/?client_name=cap'  # noqa
 GLANCE_GET_BY_ID_URL = \
     'https://oraweb.cern.ch/ords/atlr/atlas_authdb/atlas/analysis/analysis/?client_name=cap&id={id}'  # noqa
-
-# Deposit
-# ============
-#: Default jsonschema for deposit
-DEPOSIT_DEFAULT_JSONSCHEMA = 'deposits/records/lhcb-v0.0.1.json'
-#: Default schemanform for deposit
-DEPOSIT_DEFAULT_SCHEMAFORM = 'json/deposits/records/lhcb-v0.0.1.json'
-#: Search api url for deposit
-DEPOSIT_SEARCH_API = '/api/deposits/'
-#: Files api url for deposit
-DEPOSIT_FILES_API = '/api/files'
-
-DEPOSIT_PID_MINTER = 'cap_record_minter'
-
-DEPOSIT_REST_ENDPOINTS = copy.deepcopy(deposit_config.DEPOSIT_REST_ENDPOINTS)
-_PID = 'pid(depid,record_class="cap.modules.deposit.api:CAPDeposit")'
-
-DEPOSIT_UI_SEARCH_INDEX = '*'
-
-# DEPOSIT_PID_MINTER is used on publish method in deposit class
-DEPOSIT_REST_ENDPOINTS['depid'].update({
-    'pid_type': 'depid',
-    'pid_minter': 'cap_deposit_minter',
-    'pid_fetcher': 'cap_deposit_fetcher',
-    'record_class': 'cap.modules.deposit.api:CAPDeposit',
-    'record_loaders': {
-        'application/json': 'cap.modules.deposit.loaders:json_v1_loader',
-        'application/json-patch+json': lambda: request.get_json(force=True),
-    },
-    'record_serializers': {
-        'application/json': (
-            'cap.modules.records.serializers'
-            ':json_v1_response'),
-        'application/basic+json': (
-            'cap.modules.records.serializers'
-            ':basic_json_v1_response'),
-        'application/permissions+json': (
-            'cap.modules.records.serializers'
-            ':permissions_json_v1_response'
-        )
-    },
-    'search_serializers': {
-        'application/json': ('cap.modules.records.serializers'
-                             ':json_v1_search'),
-        'application/basic+json': ('cap.modules.records.serializers'
-                                   ':basic_json_v1_search')
-    },
-    'files_serializers': {
-        'application/json': (
-            'cap.modules.records.serializers'
-            ':deposit_v1_files_response'),
-    },
-    'search_class': 'cap.modules.deposit.search:CAPDepositSearch',
-    'search_factory_imp': 'cap.modules.search.query'
-    ':cap_search_factory',
-    'item_route': '/deposits/<{0}:pid_value>'.format(_PID),
-    'file_list_route': '/deposits/<{0}:pid_value>/files'.format(_PID),
-    'file_item_route':
-    '/deposits/<{0}:pid_value>/files/<path:key>'.format(_PID),
-    'create_permission_factory_imp': check_oauth2_scope(
-        lambda record: CreateDepositPermission(record).can(),
-        write_scope.id),
-    'read_permission_factory_imp': check_oauth2_scope(
-        lambda record: ReadDepositPermission(record).can(),
-        write_scope.id),
-    'update_permission_factory_imp': allow_all,
-    'delete_permission_factory_imp': check_oauth2_scope(
-        lambda record: AdminDepositPermission(record).can(),
-        write_scope.id),
-    'links_factory_imp': 'cap.modules.deposit.links:links_factory',
-})
-
-# Datadir
-# =======
-DATADIR = join(dirname(__file__), 'data')
 
 # Files
 # ===========
@@ -644,47 +381,66 @@ INDEXER_REPLACE_REFS = False
 
 # LHCB DB files location
 # ======================
-LHCB_DB_FILES_LOCATION = os.environ.get(
-    'APP_LHCB_FILES_LOCATION', os.path.join(
-        APP_ROOT,
-        'modules/experiments/static/example_lhcb/'
-    ))
+LHCB_DB_FILES_LOCATION = os.path.join(
+    APP_ROOT,
+    'modules/experiments/static/example_lhcb/'
+)
+
+EXPERIMENTS_RESOURCES_LOCATION = os.path.join(
+    APP_ROOT,
+    'modules/experiments/static'
+)
 
 # Disable JWT token
 ACCOUNTS_JWT_ENABLE = False
 
 # Github and Gitlab oauth tokens
 # ==============================
-GITHUB_OAUTH_ACCESS_TOKEN = os.environ.get('APP_GITHUB_OAUTH_ACCESS_TOKEN')
-GITLAB_OAUTH_ACCESS_TOKEN = os.environ.get('APP_GITLAB_OAUTH_ACCESS_TOKEN')
+GITHUB_OAUTH_ACCESS_TOKEN = "CHANGE_ME"
+GITLAB_OAUTH_ACCESS_TOKEN = "CHANGE_ME"
 
 # Reana server url
 # ================
 REANA_ACCESS_TOKEN = {
-    'ATLAS': os.environ.get('APP_REANA_ATLAS_ACCESS_TOKEN'),
-    'ALICE': os.environ.get('APP_REANA_ALICE_ACCESS_TOKEN'),
-    'CMS': os.environ.get('APP_REANA_CMS_ACCESS_TOKEN'),
-    'LHCb': os.environ.get('APP_REANA_LHCb_ACCESS_TOKEN')
+    'ATLAS': os.environ.get('REANA_ATLAS_ACCESS_TOKEN'),
+    'ALICE': os.environ.get('REANA_ALICE_ACCESS_TOKEN'),
+    'CMS': os.environ.get('REANA_CMS_ACCESS_TOKEN'),
+    'LHCb': os.environ.get('REANA_LHCb_ACCESS_TOKEN'),
 }
 
 # Keytabs
-KEYTABS_LOCATION = os.environ.get(
-    'APP_KEYTABS_LOCATION',
-    '/etc/keytabs'
-)
+KEYTABS_LOCATION = '/etc/keytabs'
 
-KRB_PRINCIPALS = {
-    'CADI': (CMS_USER_PRINCIPAL, CMS_USER_KEYTAB),
-}
+KRB_PRINCIPALS = {'CADI': (CMS_USER_PRINCIPAL, CMS_USER_KEYTAB)}
 
-CERN_CERTS_PEM = os.environ.get('APP_CERN_CERTS_PEM')
+CERN_CERTS_PEM = None
 
 # Zenodo
 # ======
-ZENODO_SERVER_URL = os.environ.get(
-    'APP_ZENODO_SERVER_URL',
-    'https://zenodo.org/api')
+ZENODO_SERVER_URL = 'https://zenodo.org/api'
 
-ZENODO_ACCESS_TOKEN = os.environ.get(
-    'APP_ZENODO_ACCESS_TOKEN',
-    'CHANGE_ME')
+ZENODO_ACCESS_TOKEN = 'CHANGE_ME'
+
+# Endpoints
+# =========
+DEPOSIT_UI_ENDPOINT = '{scheme}://{host}/drafts/{pid_value}'
+RECORDS_UI_ENDPOINT = '{scheme}://{host}/published/{pid_value}'
+
+# Webhooks & ngrok init
+# =====================
+# In order to debug webhooks, we need a tunnel to our local instance
+# so we make sure that we have an ngrok tunnel running, and add it
+# to the allowed hosts (to enable requests)
+TEST_WITH_NGROK = os.environ.get('CAP_TEST_WITH_NGROK', False)
+if DEBUG_MODE == 'True' and TEST_WITH_NGROK == 'True':
+    try:
+        resp = requests.get('http://localhost:4040/api/tunnels',
+                            headers={'Content-Type': 'application/json'})
+        NGROK_HOST = resp.json()['tunnels'][0]['public_url']
+        APP_ALLOWED_HOSTS.append(NGROK_HOST.split('//')[-1])
+        WEBHOOK_NGROK_URL = '{}/repos/event'.format(NGROK_HOST)
+        print('* Webhook url at {}'.format(WEBHOOK_NGROK_URL))
+    except (IndexError, KeyError):
+        print('Ngrok is not running.')
+
+WEBHOOK_ENDPOINT = 'cap_repos.get_webhook_event'

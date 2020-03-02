@@ -21,18 +21,31 @@
 # In applying this license, CERN does not
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
-
 """CAP Query factory for REST API."""
 
 from __future__ import absolute_import, print_function
 
-from flask import current_app, request
-
 from elasticsearch_dsl.query import Q
+from flask import current_app, request
+from flask_login import current_user
 from invenio_records_rest.errors import InvalidQueryRESTError
 from invenio_records_rest.sorter import default_sorter_factory
 
 from .facets import cap_facets_factory
+
+# if any of the keywords appears in a search url as a parameter,
+# will get resolved to a specified query if True or ~query if False
+KEYWORD_TO_QUERY = {
+    'by_bot': lambda: ~Q('exists', field='created_by'),
+    'by_me': lambda: Q('match', **{'created_by': current_user.id}),
+}
+
+ESCAPE_CHAR_MAP = {
+    '/': r'\/',
+    '+': r'\+',
+    '-': r'\-',
+    '^': r'\^',
+}
 
 
 def cap_search_factory(self, search, query_parser=None):
@@ -42,22 +55,42 @@ def cap_search_factory(self, search, query_parser=None):
     :param search: Elastic search DSL search instance.
     :returns: Tuple with search instance and URL arguments.
     """
-    def _default_parser(qstr=None):
+    def _default_parser(qstr=None, **kwargs):
         """Use of the Q() from elasticsearch_dsl."""
-        if qstr:
-            return Q('query_string', query=qstr)
-        return Q()
+        def _escape_qstr(qstr):
+            return ''.join((ESCAPE_CHAR_MAP.get(char, char) for char in qstr))
+
+        query = Q('query_string',
+                  query=_escape_qstr(qstr),
+                  analyzer="lowercase_whitespace_analyzer",
+                  analyze_wildcard=True,
+                  default_operator='AND') if qstr else Q()
+
+        # resolve keywords to queries
+        for k, v in kwargs.items():
+            if k in KEYWORD_TO_QUERY:
+                if v == 'True':
+                    query = query & KEYWORD_TO_QUERY[k]()
+                elif v == 'False':
+                    query = query & ~KEYWORD_TO_QUERY[k]()
+
+        return query
 
     query_string = request.values.get('q')
+
+    # parse url params to search for keywords
+    query_keywords = {
+        k: request.values[k]
+        for k in KEYWORD_TO_QUERY.keys() if k in request.values
+    }
     query_parser = query_parser or _default_parser
 
     try:
-        search = search.query(query_parser(query_string))
+        search = search.query(query_parser(query_string, **query_keywords))
     except SyntaxError:
-        current_app.logger.debug(
-            "Failed parsing query: {0}".format(
-                request.values.get('q', '')),
-            exc_info=True)
+        current_app.logger.debug("Failed parsing query: {0}".format(
+            request.values.get('q', '')),
+                                 exc_info=True)
         raise InvalidQueryRESTError()
 
     search_index = search._index[0]

@@ -12,7 +12,11 @@ import {
   API_KEY_LIST_ERROR,
   CREATE_TOKEN_SUCCESS,
   CREATE_TOKEN_ERROR,
-  REVOKE_TOKEN_SUCCESS
+  REVOKE_TOKEN_SUCCESS,
+  INIT_CURRENT_USER_REQUEST,
+  INIT_CURRENT_USER_SUCCESS,
+  INIT_CURRENT_USER_ERROR,
+  INTEGRATIONS_UPDATE
 } from "../actions/auth";
 
 const initialState = Map({
@@ -21,7 +25,9 @@ const initialState = Map({
   token: localStorage.getItem("token"),
   error: null,
   loading: false,
-  tokens: List()
+  loadingInit: true,
+  tokens: List(),
+  integrations: Map({})
 });
 
 export default function authReducer(state = initialState, action) {
@@ -30,12 +36,26 @@ export default function authReducer(state = initialState, action) {
       return state.set("isLoggedIn", true);
     case UNAUTHENTICATED:
       return state.set("isLoggedIn", false);
+    case INIT_CURRENT_USER_REQUEST:
+      return state.set("loadingInit", true);
+    case INIT_CURRENT_USER_SUCCESS:
+      return state.set("loadingInit", false);
+    case INIT_CURRENT_USER_ERROR:
+      return state.set("loadingInit", false);
     case LOGIN_REQUEST:
       return state.set("error", null).set("loading", true);
     case LOGIN_SUCCESS:
       return state
         .set("isLoggedIn", true)
         .set("currentUser", fromJS(action.user))
+        .set(
+          "integrations",
+          action.user.profile &&
+          action.user.profile.profile &&
+          action.user.profile.profile.services
+            ? action.user.profile.profile.services
+            : {}
+        )
         .set("loading", false);
     case LOGIN_ERROR:
       return state.set("error", action.error).set("loading", false);
@@ -46,6 +66,8 @@ export default function authReducer(state = initialState, action) {
         .set("isLoggedIn", false)
         .set("currentUser", null)
         .set("loading", false);
+    case INTEGRATIONS_UPDATE:
+      return state.set("integrations", action.integrations);
     case API_KEY_LIST_SUCCESS:
       return state.set("tokens", List(action.applications.tokens));
     case API_KEY_LIST_ERROR:

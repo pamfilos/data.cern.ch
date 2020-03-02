@@ -23,14 +23,21 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 """CAP Deposit loaders."""
 
-from flask import request
+from copy import deepcopy
+
+from flask import current_app, request
+from invenio_rest.errors import FieldError
+from jsonschema import Draft4Validator, FormatChecker, validators
+from jsonschema.exceptions import ValidationError
+
 from cap.modules.deposit.utils import clean_empty_values
+from cap.modules.schemas.resolvers import (resolve_schema_by_url,
+                                           schema_name_to_url)
 
 
 def json_v1_loader(data=None):
     """Load data from request and process URLs."""
-    from copy import deepcopy
-    data = deepcopy(data or request.json)
+    data = deepcopy(data or request.get_json())
 
     # remove underscore prefixed fields
     data = {k: v for k, v in data.items() if not k.startswith('_')}

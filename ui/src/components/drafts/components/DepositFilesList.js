@@ -2,13 +2,17 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import FileManager from "./DepositFileManager";
-import FileList from "./FileList";
 
 import ArchiveIcon from "grommet/components/icons/base/Archive";
 import DocumentConfigIcon from "grommet/components/icons/base/DocumentConfig";
 import PieChartIcon from "grommet/components/icons/base/PieChart";
 import BookIcon from "grommet/components/icons/base/Book";
 import NoteIcon from "grommet/components/icons/base/Note";
+import Box from "grommet/components/Box";
+
+// import PreviewUpload from "./PreviewUpload";
+
+import FileTree from "./FileTree";
 
 class DepositFilesList extends React.Component {
   constructor(props) {
@@ -32,27 +36,18 @@ class DepositFilesList extends React.Component {
   }
 
   render() {
-    return (
-      <span>
-        <FileManager
-          item_id={this.props.item_id}
-          files={this.props.files}
-          bucket={this.props.bucket}
-          activeLayer={this.props.fileManagerLayerActive}
-          key="_file_manager"
-        />
-
-        <FileList files={this.props.files} />
-      </span>
-    );
+    return [
+      <FileManager key="filesManager" files={this.props.files} />,
+      <Box key="filesList" style={{ paddingLeft: "3px", paddingRight: "10px" }}>
+        <FileTree files={this.props.files.toJS()} />
+      </Box>
+      // <PreviewUpload key="_file_previewer" />
+    ];
   }
 }
 
 DepositFilesList.propTypes = {
-  fileManagerLayerActive: PropTypes.bool,
-  item_id: PropTypes.string,
-  files: PropTypes.object,
-  bucket: PropTypes.object
+  files: PropTypes.object
 };
 
 export default DepositFilesList;

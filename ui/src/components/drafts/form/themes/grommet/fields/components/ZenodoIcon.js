@@ -93,3 +93,4 @@ export const ZenodoIcon = () => (
     </g>
   </SVGIcon>
 );
+

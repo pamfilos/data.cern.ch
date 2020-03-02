@@ -1,172 +1,111 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import AnnotatedMeter from "grommet-addons/components/AnnotatedMeter";
-import MoreIcon from "grommet/components/icons/base/More";
-import ReactTooltip from "react-tooltip";
 
-import Anchor from "grommet/components/Anchor";
 import Box from "grommet/components/Box";
-import Heading from "grommet/components/Heading";
-import Header from "grommet/components/Header";
-import Tiles from "grommet/components/Tiles";
-import Tile from "grommet/components/Tile";
-import List from "grommet/components/List";
-import ListItem from "grommet/components/ListItem";
+import Notification from "grommet/components/Notification";
+import Spinning from "grommet/components/icons/Spinning";
 
 import { withRouter } from "react-router-dom";
 import { fetchDashboard } from "../../actions/dashboard";
-import ListPlaceholder from "grommet-addons/components/ListPlaceholder";
 
-function DashboardList(props) {
-  return (
-    <Box>
-      <Heading
-        tag="h5"
-        uppercase={true}
-        align="center"
-        justify="center"
-        data-tip={props.emptyMessage}
-      >
-        {props.header}
-      </Heading>
-      <ReactTooltip />
-      <List>
-        {props.items.length > 0 ? (
-          props.items.map((item, index) => {
-            let metadata = item.metadata;
-            let id = item.id;
-
-            return (
-              <ListItem
-                textAlign="center"
-                justify="center"
-                key={`${item.id}-${index}`}
-              >
-                <Anchor
-                  path={`${props.urlDetailed}/${id}`}
-                  style={{
-                    textDecoration: "none",
-                    color: "black"
-                  }}
-                >
-                  {metadata.general_title || id}
-                </Anchor>
-              </ListItem>
-            );
-          })
-        ) : (
-          <Box textAlign="center">
-            <ListPlaceholder
-              unfilteredTotal={0}
-              pad="large"
-              emptyMessage={props.emptyMessage || "No analysis."}
-            />
-          </Box>
-        )}
-      </List>
-      {props.items.length > 0 ? (
-        <Box align="center" margin={{ horizontal: "medium" }}>
-          <Anchor
-            path={props.urlMore || "/search"}
-            style={{ textDecoration: "none", color: "black" }}
-          >
-            <MoreIcon />
-          </Anchor>
-        </Box>
-      ) : null}
-    </Box>
-  );
-}
+import DashboardList from "./DashboardList";
+import DashboardListItem from "./DashboardListItem";
+import DashboardWorkflowListItem from "./DashboardWorkflowListItem";
+import DashboardMeter from "./components/DashboardMeter";
+import DashboardQuickSearch from "./DashboardQuickSearch";
 
 class Dashboard extends React.Component {
   componentDidMount() {
     this.props.fetchDashboard();
   }
 
+  _getList = () => {
+    return {
+      drafts: {
+        all: {
+          list: this.props.results.drafts.data,
+          more: this.props.results.drafts.more
+        },
+        mine: {
+          list: this.props.results.user_drafts.data,
+          more: this.props.results.user_drafts.more
+        }
+      },
+      published: {
+        all: {
+          list: this.props.results.published.data,
+          more: this.props.results.published.more
+        },
+        mine: {
+          list: this.props.results.user_published.data,
+          more: this.props.results.user_published.more
+        }
+      },
+      workflows: {
+        mine: {
+          list: this.props.results.user_workflows.data,
+          more: this.props.results.user_workflows.more
+        }
+      }
+    };
+  };
+
   render() {
+    let lists = this._getList();
     return (
-      <Box full={true} colorIndex="light-2">
-        <Header
-          size="small"
-          colorIndex="neutral-1-a"
-          pad="none"
-          wrap={true}
-          justify="center"
-        />
-        <Tiles full={true}>
-          <Tile pad="large" basis="1/3">
-            <DashboardList
-              items={this.props.results.published_by_collab}
-              header="published in collaboration"
-              urlDetailed="/published"
-              urlMore="/search?q="
-              emptyMessage="All analyses published on CAP by members of your collaboration."
-            />
-          </Tile>
-          <Tile pad="large" basis="1/3">
-            <DashboardList
-              items={this.props.results.shared_with_user}
-              header="shared with you"
-              urlDetailed="/drafts"
-              urlMore={`/drafts?q=-created_by:${
-                this.props.currentUserId
-              }&status=draft`}
-              emptyMessage="Draft analyses that your collaborators have given you read/write access to."
-            />
-          </Tile>
-          <Tile pad="large" basis="1/3">
-            <DashboardList
-              items={this.props.results.published_by_collab}
-              header="latest from your group"
-              urlDetailed="/published"
-              urlMore="/search?q="
-              emptyMessage="All analyses published on CAP by members of your working group."
-            />
-          </Tile>
-          <Tile pad="large" basis="1/3">
-            <DashboardList
-              items={this.props.results.user_drafts}
-              header="your drafts"
-              urlDetailed="/drafts"
-              urlMore={`/drafts?q=created_by:${
-                this.props.currentUserId
-              }&status=draft`}
-              emptyMessage="Your draft analyses. By default, only you can access them, but it is possible to give read/write access to other collaborators."
-            />
-          </Tile>
-          <Tile pad="medium" basis="1/3">
-            <AnnotatedMeter
-              legend={true}
-              type="circle"
-              defaultMessage="Your"
-              max={this.props.results.user_count}
-              series={[
-                {
-                  label: "Your Drafts",
-                  value: this.props.results.user_drafts_count,
-                  colorIndex: "graph-1"
-                },
-                {
-                  label: "Published",
-                  value: this.props.results.user_published_count,
-                  colorIndex: "graph-2"
-                }
-              ]}
-            />
-          </Tile>
-          <Tile pad="large" basis="1/3">
-            <DashboardList
-              items={this.props.results.user_published}
-              header="published by you"
-              urlDetailed="/published"
-              urlMore={`/search?q=created_by:${
-                this.props.currentUserId
-              }&status=published`}
-              emptyMessage="Your published analyses. Once published on CAP, all members of your collaboration will have read access."
-            />
-          </Tile>
-        </Tiles>
+      <Box colorIndex="light-2" flex full>
+        {!this.props.permissions && (
+          <Notification
+            message="Your account has no permissions to access the platform resources."
+            status="warning"
+          />
+        )}
+        {this.props.loading ? (
+          <Box flex align="center" justify="center">
+            <Spinning size="large" />
+          </Box>
+        ) : (
+          <Box colorIndex="light-2" flex align="center">
+            <Box
+              direction="row"
+              wrap
+              align="center"
+              pad={{
+                between: "large",
+                horizontal: "large"
+              }}
+            >
+              <DashboardMeter
+                total={this.props.results.user_count}
+                drafts={this.props.results.user_drafts_count}
+                published={this.props.results.user_published_count}
+              />
+              <DashboardList
+                listType="draft"
+                list={lists["drafts"]}
+                header="drafts"
+                ListItem={DashboardListItem}
+                emptyMessage="Draft analyses that your collaborators have given you read/write access to."
+              />
+              <DashboardQuickSearch />
+              <DashboardList
+                listType="published"
+                list={lists["published"]}
+                header="published in collaboration"
+                ListItem={DashboardListItem}
+                emptyMessage="All analyses published on CAP by members of your collaboration."
+              />
+              <DashboardList
+                listType="workflows"
+                list={lists["workflows"]}
+                header="workflows"
+                ListItem={DashboardWorkflowListItem}
+                emptyMessage="Recent workflows attached to your content"
+              />
+            </Box>
+          </Box>
+        )}
       </Box>
     );
   }
@@ -176,12 +115,15 @@ Dashboard.propTypes = {
   fetchDashboard: PropTypes.func,
   currentUser: PropTypes.object,
   results: PropTypes.object,
-  history: PropTypes.object
+  history: PropTypes.object,
+  permissions: PropTypes.bool,
+  loading: PropTypes.bool
 };
 
 function mapStateToProps(state) {
   return {
-    currentUserId: state.auth.getIn(["currentUser", "userId"]),
+    loading: state.dashboard.get("loading"),
+    permissions: state.auth.getIn(["currentUser", "permissions"]),
     results: state.dashboard.getIn(["results"])
   };
 }

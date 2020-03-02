@@ -4,9 +4,7 @@
 
 from __future__ import absolute_import, print_function
 
-import requests
-
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint
 
 
 blueprint = Blueprint('cap_services',
@@ -14,4 +12,4 @@ blueprint = Blueprint('cap_services',
                       url_prefix='/services'
                       )
 
-from . import zenodo, cern, orcid  # noqa
+from . import zenodo, cern, orcid, status_checks, ror, cds, latex  # noqa

@@ -6,9 +6,13 @@ import PropTypes from "prop-types";
 import WelcomePage from "./welcome/WelcomePage";
 import IndexPage from "./index/IndexPage";
 
+import CMSIndex from "./cms";
+
 import HowToSearchPage from "./about/HowToSearch";
 import AboutPage from "./about/AboutPage";
+import StatusPage from "./status/StatusPage";
 import noRequireAuth from "./auth/NoAuthorizationRequired";
+import requireAuth from "./auth/AuthorizationRequired";
 
 import Box from "grommet/components/Box";
 import Grommet from "grommet/components/Grommet";
@@ -26,18 +30,25 @@ class App extends React.Component {
   }
 
   componentDidMount() {
-    this.props.initCurrentUser();
+    // const path = this.props.location.pathname;
+    let {
+      location: { state: { next: next = undefined } = {} }
+    } = this.props.history;
+    this.props.initCurrentUser(next);
   }
 
   render() {
+    if (this.props.loadingInit) return <Box>Loading....</Box>;
     return (
       <Grommet>
         <Box flex={false} full={true}>
           <Switch id="main-container">
             <Route path="/login" component={noRequireAuth(WelcomePage)} />
             <Route path="/about" component={AboutPage} />
+            <Route path="/status" component={StatusPage} />
+            <Route path="/cms" component={CMSIndex} />
             <Route path="/search-tips" component={HowToSearchPage} />
-            <Route path="/" component={IndexPage} />
+            <Route path="/" component={requireAuth(IndexPage)} />
             {/*
             <Route component={NotFoundPage} />
              */}
@@ -50,18 +61,22 @@ class App extends React.Component {
 
 App.propTypes = {
   children: PropTypes.element,
-  initCurrentUser: PropTypes.func
+  initCurrentUser: PropTypes.func,
+  loadingInit: PropTypes.bool,
+  history: PropTypes.object,
+  location: PropTypes.object
 };
 
 function mapStateToProps(state) {
   return {
-    groups: state.auth.getIn(["currentUser", "depositGroups"])
+    groups: state.auth.getIn(["currentUser", "depositGroups"]),
+    loadingInit: state.auth.get("loadingInit")
   };
 }
 
 function mapDispatchToProps(dispatch) {
   return {
-    initCurrentUser: () => dispatch(initCurrentUser())
+    initCurrentUser: next => dispatch(initCurrentUser(next))
   };
 }
 

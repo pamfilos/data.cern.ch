@@ -1,6 +1,8 @@
 """Initialize extension."""
 
 from __future__ import absolute_import, print_function
+from cap.modules.schemas.models import Schema
+from invenio_search import current_search
 
 
 class CAPDeposit(object):

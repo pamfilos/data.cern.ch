@@ -2,7 +2,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import Box from "grommet/components/Box";
-import Toast from "grommet/components/Toast";
 
 import TagsInput from "react-tagsinput";
 
@@ -13,50 +12,47 @@ class TagsWidget extends Component {
     super(props);
     this.state = {
       tags: [],
-      errors: []
+      errors: null
     };
     this.handleChange = this.handleChange.bind(this);
   }
 
   handleChange(tags) {
-    this.setState({ tags });
-    return this.props.onChange(tags);
+    this.setState({ tags, errors: null });
+
+    let type = this.props.schema.type ? this.props.schema.type : "array";
+
+    if (type == "array") return this.props.onChange(tags);
+    else
+      return this.props.onChange(
+        tags.join(this.props.options.delimiter || ", ")
+      );
   }
 
   renderInput(props) {
     let { onChange, value, ...other } = props;
     return (
-      <Box direction="row" flex={true} align="start">
-        <Box size="medium">
-          <input
-            type="text"
-            style={{ border: "none" }}
-            onChange={onChange}
-            value={value}
-            {...other}
-          />
-        </Box>
-      </Box>
+      <input
+        type="text"
+        style={{ border: "none" }}
+        onChange={onChange}
+        value={value}
+        {...other}
+      />
     );
   }
 
   onValidationReject = errors => this.setState({ errors: errors });
 
-  clearError = () => {
-    this.setState({ errors: [] });
-  };
-
   render() {
-    let TAGS_REGEX = this.props.options.pattern;
+    let TAGS_REGEX = this.props.options.pattern
+      ? new RegExp(this.props.options.pattern)
+      : null;
+
     return (
-      <Box>
-        {this.state.errors && this.state.errors.length > 0 ? (
-          <Toast status="critical" onClose={() => this.clearError()}>
-            {this.state.errors} is not a valid url. Please provide a valid
-            <strong>Github</strong> or <strong>Gitlab CERN</strong> url.
-          </Toast>
-        ) : null}
+      <Box pad={{ horizontal: "medium" }}>
         <TagsInput
+          disabled={this.props.readonly}
           value={this.state.tags}
           onChange={this.handleChange}
           className={"cap-react-tagsinput"}
@@ -67,10 +63,14 @@ class TagsWidget extends Component {
           }}
           renderInput={this.renderInput}
           maxTags={10}
-          addOnPaste={true}
           validationRegex={TAGS_REGEX}
           onValidationReject={this.onValidationReject}
         />
+        {this.state.errors ? (
+          <Box style={{ color: "red" }}>
+            Error values: {this.state.errors.join(", ")}
+          </Box>
+        ) : null}
       </Box>
     );
   }
@@ -80,7 +80,8 @@ TagsWidget.propTypes = {
   options: PropTypes.object,
   tags: PropTypes.array,
   placeholder: PropTypes.string,
-  onChange: PropTypes.func
+  onChange: PropTypes.func,
+  readonly: PropTypes.bool
 };
 
 export default TagsWidget;

@@ -36,6 +36,7 @@ const CheckBoxWidget = function(props) {
       {props.options.enumOptions.length > 0
         ? props.options.enumOptions.map(item => (
             <CheckBox
+              disabled={props.readonly}
               key={item.label}
               inline="true"
               name={item.label}
@@ -56,7 +57,8 @@ CheckBoxWidget.propTypes = {
   value: PropTypes.string,
   options: PropTypes.object,
   rawErrors: PropTypes.object,
-  schema: PropTypes.object
+  schema: PropTypes.object,
+  readonly: PropTypes.bool
 };
 
 export default CheckBoxWidget;

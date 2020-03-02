@@ -6,12 +6,12 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import Box from "grommet/components/Box";
-import Toast from "grommet/components/Toast";
 
-import { fetchAndAssignSchema } from "../../actions/common";
+import cogoToast from "cogo-toast";
+import { EditAnchor } from "../drafts/components/Buttons";
 
 import JSONSchemaPreviewer from "./form/JSONSchemaPreviewer";
-import Sidebar from "./components/DepositSidebar";
+import SectionBox from "../partials/SectionBox";
 
 const transformSchema = schema => {
   const schemaFieldsToRemove = [
@@ -24,6 +24,8 @@ const transformSchema = schema => {
     "$schema",
     "general_title",
     "_experiment",
+    "_fetched_from",
+    "_user_edited",
     "control_number"
   ];
 
@@ -37,34 +39,11 @@ const transformSchema = schema => {
 };
 
 class DraftPreview extends React.Component {
-  componentDidMount() {
-    // Check if schemaId exist on state and fetch schema if needed
-    if (this.props.schemaId) {
-      // If form schemas are empty, then fetch
-      if (this.props.schemas == null) {
-        this.props.fetchAndAssignSchema(this.props.schemaId);
-      }
-      // If form schemas aren't empty and schemaId different than the one needed
-      // fetch and assign the correct schema
-      else if (this.props.schemaId != this.props.schemas.schemaId) {
-        this.props.fetchAndAssignSchema(this.props.schemaId);
-      }
-    }
+  showToaster(error) {
+    cogoToast.error(error, {
+      hideAfter: 3
+    });
   }
-
-  componentDidUpdate() {
-    if (this.props.schemaId) {
-      if (!this.props.schemasLoading) {
-        if (
-          this.props.schemas == null ||
-          this.props.schemaId != this.props.schemas.schemaId
-        ) {
-          this.props.fetchAndAssignSchema(this.props.schemaId);
-        }
-      }
-    }
-  }
-
   render() {
     let _schema =
       this.props.schemas && this.props.schemas.schema
@@ -72,31 +51,131 @@ class DraftPreview extends React.Component {
         : null;
 
     return (
-      <Box id="deposit-page" flex={true}>
-        {this.props.error ? (
-          <Toast status="critical">{this.props.error.message}</Toast>
-        ) : null}
-
-        <Box direction="row" flex={true} wrap={false}>
-          <Sidebar draftId={this.props.draft_id} />
-
-          {this.props.schemas && this.props.schemas.schema ? (
-            <Box flex={true}>
-              <Box pad="medium" colorIndex="light-2" />
-              <Box flex={true}>
-                <Box flex={false} pad="medium">
-                  <JSONSchemaPreviewer
-                    formData={this.props.formData} // TOFIX: change to get from metadata
-                    schema={_schema}
-                    uiSchema={this.props.schemas.uiSchema || {}}
-                    onChange={() => {}}
+      <Box
+        id="deposit-page"
+        flex={true}
+        pad="small"
+        direction="row"
+        wrap={true}
+      >
+        {this.props.error ? this.showToaster(this.props.error.message) : null}
+        <Box flex={true} pad={{ between: "medium" }} direction="row">
+          <Box flex={true} size={{ width: { min: "medium" } }}>
+            <SectionBox
+              header="Metadata"
+              headerActions={
+                this.props.canUpdate ? (
+                  <EditAnchor draft_id={this.props.draft_id} />
+                ) : null
+              }
+              body={
+                this.props.schemas && this.props.schemas.schema ? (
+                  <Box flex={true} pad="small">
+                    <JSONSchemaPreviewer
+                      formData={this.props.formData} // TOFIX: change to get from metadata
+                      schema={_schema}
+                      uiSchema={this.props.schemas.uiSchema || {}}
+                      onChange={() => {}}
+                    >
+                      <span />
+                    </JSONSchemaPreviewer>
+                  </Box>
+                ) : null
+              }
+            />
+          </Box>
+          <Box flex={true} size={{ width: { min: "medium" } }}>
+            <SectionBox
+              header="Repositories"
+              body={
+                <Box pad="small">
+                  <Box
+                    key="header"
+                    direction="row"
+                    wrap={false}
+                    justify="between"
+                    pad={{ between: "small" }}
+                    margin={{ bottom: "small" }}
                   >
-                    <span />
-                  </JSONSchemaPreviewer>
+                    <Box flex={false}>
+                      <strong>Source</strong>
+                    </Box>
+                    <Box flex={true}>
+                      <strong>Repository</strong>
+                    </Box>
+                    <Box flex={false}>
+                      <strong>Branch/Ref</strong>
+                    </Box>
+                  </Box>
+                  {this.props.repositories && this.props.repositories.length ? (
+                    this.props.repositories.map((repo, index) => (
+                      <Box
+                        key={index}
+                        direction="row"
+                        wrap={false}
+                        justify="between"
+                        pad={{ between: "small" }}
+                      >
+                        <Box flex={false}>
+                          {repo.host.indexOf("github") > -1
+                            ? "Github"
+                            : "Gitlab"}
+                        </Box>
+                        <Box flex={true}>
+                          {repo.owner}/{repo.name}
+                        </Box>
+                        <Box flex={false}>{repo.branch}</Box>
+                      </Box>
+                    ))
+                  ) : (
+                    <Box>No repositories connected</Box>
+                  )}
                 </Box>
-              </Box>
-            </Box>
-          ) : null}
+              }
+            />
+            <SectionBox
+              header="Workflows"
+              body={
+                <Box pad="small">
+                  <Box
+                    key="header"
+                    direction="row"
+                    wrap={false}
+                    justify="between"
+                    pad={{ between: "small" }}
+                    margin={{ bottom: "small" }}
+                  >
+                    <Box flex={false}>
+                      <strong>Engine</strong>
+                    </Box>
+                    <Box flex={true}>
+                      <strong>Workflow Name</strong>
+                    </Box>
+                    <Box flex={false}>
+                      <strong>Status</strong>
+                    </Box>
+                  </Box>
+                  {this.props.workflows && this.props.workflows.length ? (
+                    this.props.workflows.map((workflow, index) => (
+                      <Box
+                        key={index}
+                        direction="row"
+                        wrap={false}
+                        justify="between"
+                        pad={{ between: "small" }}
+                      >
+                        <Box flex={false}>{workflow.engine}</Box>
+                        <Box flex={true}>{workflow.name}</Box>
+                        <Box flex={false}>{workflow.status}</Box>
+                      </Box>
+                    ))
+                  ) : (
+                    <Box>No workflows yet</Box>
+                  )}
+                </Box>
+              }
+            />
+          </Box>
         </Box>
       </Box>
     );
@@ -110,28 +189,24 @@ DraftPreview.propTypes = {
   schemaId: PropTypes.string,
   formData: PropTypes.object,
   schemasLoading: PropTypes.bool,
+  canUpdate: PropTypes.bool,
   fetchAndAssignSchema: PropTypes.func,
   error: PropTypes.object
 };
 
 function mapStateToProps(state) {
   return {
-    schemaId: state.drafts.getIn(["current_item", "schema"]),
-    schemas: state.drafts.getIn(["current_item", "schemas"]),
-    schemasLoading: state.drafts.getIn(["current_item", "schemasLoading"]),
-
-    draft_id: state.drafts.getIn(["current_item", "id"]),
-    draft: state.drafts.getIn(["current_item", "data"]),
-    published_id: state.drafts.getIn(["current_item", "published_id"]),
-    formData: state.drafts.getIn(["current_item", "formData"]) // TOFIX: remove to get from metadata
+    schemas: state.draftItem.get("schemas"),
+    // schemasLoading: state.draftItem.get("schemasLoading"),
+    canUpdate: state.draftItem.get("can_update"),
+    draft_id: state.draftItem.get("id"),
+    repositories: state.draftItem.get("repositories"),
+    formData: state.draftItem.get("formData") // TOFIX: remove to get from metadata
   };
 }
 
-function mapDispatchToProps(dispatch) {
-  return {
-    fetchAndAssignSchema: (schemaURL, schemaID, schemaVersion) =>
-      dispatch(fetchAndAssignSchema(schemaURL, schemaID, schemaVersion))
-  };
+function mapDispatchToProps() {
+  return {};
 }
 
 export default connect(

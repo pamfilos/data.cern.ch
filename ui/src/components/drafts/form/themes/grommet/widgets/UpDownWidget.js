@@ -13,6 +13,7 @@ const UpDownWidget = function(props) {
 
   return (
     <NumberInput
+      disabled={props.readonly}
       id="item1"
       name="item-1"
       step={null}
@@ -29,7 +30,8 @@ UpDownWidget.propTypes = {
   onChange: PropTypes.func.isRequired,
   onBlur: PropTypes.func.isRequired,
   options: PropTypes.object.isRequired,
-  value: PropTypes.number
+  value: PropTypes.number,
+  readonly: PropTypes.bool
 };
 
 export default UpDownWidget;

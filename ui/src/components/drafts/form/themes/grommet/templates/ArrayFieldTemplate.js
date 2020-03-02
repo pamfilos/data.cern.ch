@@ -9,6 +9,7 @@ import LayerArrayField from "./LayerArrayField";
 import AccordionArrayField from "./AccordionArrayField";
 import DefaultArrayField from "./DefaultArrayField";
 import StringArrayField from "./StringArrayField";
+import AddIcon from "grommet/components/icons/base/Add";
 
 class ArrayFieldTemplate extends React.Component {
   constructor(props) {
@@ -23,7 +24,6 @@ class ArrayFieldTemplate extends React.Component {
     this.state = {
       layers: []
     };
-
     if ("ui:array" in this.props.uiSchema) {
       this.formRenderType = this.props.uiSchema["ui:array"];
     } else if (
@@ -40,35 +40,54 @@ class ArrayFieldTemplate extends React.Component {
     this.props.onAddClick(event);
   }
 
-  _getArrayField(_label) {
+  _renderAddButton = () => (
+    <Box
+      onClick={this._onAddClick.bind(this)}
+      style={{ padding: "5px", margin: "10px 0" }}
+      colorIndex="light-1"
+      direction="row"
+      justify="center"
+      align="center"
+      flex={false}
+    >
+      <AddIcon size="xsmall" />{" "}
+      <span style={{ marginLeft: "5px" }}>Add Item</span>
+    </Box>
+  );
+
+  _getArrayField = _label => {
+    let _pastable = this.props.uiSchema && !this.props.uiSchema["ui:pastable"];
     if (this.formRenderType == "default") {
       return (
-        <Box className="grommetux-form-field">
-          {_label}
+        <Box className={_pastable ? "grommetux-form-field" : null}>
+          {_pastable && _label}
           <DefaultArrayField
             _onAddClick={this._onAddClick.bind(this)}
             {...this.props}
           />
+          {this._renderAddButton()}
         </Box>
       );
     } else if (this.formRenderType == "StringArrayField") {
       return (
-        <Box className="grommetux-form-field">
-          {_label}
+        <Box className={_pastable ? "grommetux-form-field" : null}>
+          {this.props.uiSchema && !this.props.uiSchema["ui:pastable"] && _label}
           <StringArrayField
             _onAddClick={this._onAddClick.bind(this)}
             {...this.props}
           />
+          {this._renderAddButton()}
         </Box>
       );
     } else if (this.formRenderType == "LayerArrayField") {
       return (
-        <Box className="grommetux-form-field">
-          {_label}
+        <Box className={_pastable ? "grommetux-form-field" : null}>
+          {this.props.uiSchema && !this.props.uiSchema["ui:pastable"] && _label}
           <LayerArrayField
             _onAddClick={this._onAddClick.bind(this)}
             {...this.props}
           />
+          {this._renderAddButton()}
         </Box>
       );
     } else if (this.formRenderType == "AccordionArrayField") {
@@ -82,6 +101,7 @@ class ArrayFieldTemplate extends React.Component {
                 </span>
               }
               required={this.props.required}
+              readonly={this.props.readonly}
               description={this.props.schema.description}
               margin="none"
             />
@@ -93,20 +113,40 @@ class ArrayFieldTemplate extends React.Component {
     } else {
       return <div>{this.props.schema.items.type}</div>;
     }
-  }
+  };
 
   render() {
     let _label = (
       <FieldHeader
         title={this.props.title}
         required={this.props.required}
+        readonly={this.props.readonly}
         description={this.props.description}
         onArrayAddClick={this._onAddClick.bind(this)}
         margin="none"
       />
     );
-
-    return this._getArrayField(_label);
+    return (
+      <Box
+        size={
+          this.props.uiSchema &&
+          this.props.uiSchema["ui:options"] &&
+          this.props.uiSchema["ui:options"].size
+            ? this.props.uiSchema["ui:options"].size
+            : "full"
+        }
+        style={{
+          display:
+            this.props.uiSchema &&
+            this.props.uiSchema["ui:options"] &&
+            this.props.uiSchema["ui:options"].display
+              ? this.props.uiSchema["ui:options"].display
+              : "flex"
+        }}
+      >
+        {this._getArrayField(_label)}
+      </Box>
+    );
   }
 }
 
@@ -117,7 +157,8 @@ ArrayFieldTemplate.propTypes = {
   title: PropTypes.string,
   description: PropTypes.string,
   required: PropTypes.bool,
-  items: PropTypes.array
+  items: PropTypes.array,
+  readonly: PropTypes.bool
 };
 
 export default ArrayFieldTemplate;

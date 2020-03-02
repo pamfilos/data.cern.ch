@@ -8,6 +8,7 @@ import ListItem from "grommet/components/ListItem";
 
 import TextWidget from "../widgets/TextWidget";
 import FormTrashIcon from "grommet/components/icons/base/FormTrash";
+import ErrorFieldIndicator from "./ErrorFieldIndicator";
 
 class StringArrayField extends React.Component {
   constructor(props) {
@@ -24,29 +25,37 @@ class StringArrayField extends React.Component {
                 ? this.props.items.map(element => (
                     <ListItem key={element.index} separator="none" pad="none">
                       <Box flex={true} direction="row">
-                        <TextWidget
-                          {...element.children.props}
-                          options={
-                            element.children.props.uiSchema["ui:options"]
-                          }
-                          value={element.children.props.formData}
-                          autofocus="true"
-                          pad="none"
-                          onKeyDown={event => {
-                            if (
-                              event.key === "Backspace" &&
-                              !element.children.props.formData
-                            ) {
-                              element.onDropIndexClick(element.index)(event);
+                        <ErrorFieldIndicator
+                          errors={this.props.formContext.ref}
+                          id={element.children.props.idSchema.$id}
+                          hideIndicator
+                        >
+                          <TextWidget
+                            {...element.children.props}
+                            options={
+                              element.children.props.uiSchema["ui:options"]
                             }
-                          }}
-                        />
-                        <Button
-                          onClick={event =>
-                            element.onDropIndexClick(element.index)(event)
-                          }
-                          icon={<FormTrashIcon />}
-                        />
+                            value={element.children.props.formData}
+                            autofocus="true"
+                            pad="none"
+                            onKeyDown={event => {
+                              if (
+                                event.key === "Backspace" &&
+                                !element.children.props.formData
+                              ) {
+                                element.onDropIndexClick(element.index)(event);
+                              }
+                            }}
+                          />
+                        </ErrorFieldIndicator>
+                        {!this.props.readonly && (
+                          <Button
+                            onClick={event =>
+                              element.onDropIndexClick(element.index)(event)
+                            }
+                            icon={<FormTrashIcon />}
+                          />
+                        )}
                       </Box>
                     </ListItem>
                   ))
@@ -61,7 +70,9 @@ class StringArrayField extends React.Component {
 
 StringArrayField.propTypes = {
   items: PropTypes.array,
-  onAddClick: PropTypes.func
+  onAddClick: PropTypes.func,
+  readonly: PropTypes.bool,
+  formContext: PropTypes.object
 };
 
 export default StringArrayField;

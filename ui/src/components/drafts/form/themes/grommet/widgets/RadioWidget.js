@@ -17,6 +17,7 @@ const RadioWidget = function(props) {
       {options.enumOptions.length > 0
         ? options.enumOptions.map(item => (
             <RadioButton
+              disabled={props.readonly}
               key={item.value}
               id={item.value}
               name={item.label}
@@ -34,7 +35,8 @@ const RadioWidget = function(props) {
 RadioWidget.propTypes = {
   onChange: PropTypes.func.isRequired,
   options: PropTypes.object.isRequired,
-  value: PropTypes.string
+  value: PropTypes.string,
+  readonly: PropTypes.bool
 };
 
 export default RadioWidget;

@@ -3,15 +3,11 @@ import PropTypes from "prop-types";
 
 import { connect } from "react-redux";
 
+import Anchor from "grommet/components/Anchor";
 import Box from "grommet/components/Box";
-
-import { BackToEditAnchor, EditAnchor } from "./DraftActionsButtons";
+import AppsIcon from "grommet/components/icons/base/Apps";
 
 import EditableTitle from "./EditableTitle";
-
-import { Route } from "react-router-dom";
-
-import DragIcon from "grommet/components/icons/base/Drag";
 
 class DraftDefaultHeader extends React.Component {
   constructor(props) {
@@ -50,45 +46,24 @@ class DraftDefaultHeader extends React.Component {
     if (this.props.error && this.props.error.status == 403) return null;
 
     return (
-      <Box flex={true} wrap={false} direction="row">
-        <Route
-          path="/drafts/:draft_id/settings"
-          render={() => (
-            <Box align="center" justify="center" colorIndex="neutral-1-a">
-              <BackToEditAnchor draft_id={this.props.draft_id} />
-            </Box>
-          )}
-        />
-        <Box
-          pad={{ horizontal: "small" }}
-          justify="start"
-          align="center"
-          direction="row"
-          flex={true}
-          wrap={false}
-        >
-          <Box margin={{ right: "small" }}>
-            <DragIcon size="xsmall" />
+      <Box flex={true} direction="row">
+        <Box direction="row" flex={true} wrap={false}>
+          <Anchor
+            path={{ path: `/drafts/${this.props.draft_id}`, index: true }}
+            data-tip="Overview"
+          >
+            <AppsIcon />
+          </Anchor>
+          <Box
+            pad="small"
+            justify="center"
+            flex={true}
+            wrap={true}
+            separator="left"
+          >
+            <EditableTitle />
           </Box>
-          <EditableTitle />
         </Box>
-
-        <Route
-          exact
-          path="/drafts/:draft_id"
-          render={() => (
-            <Box
-              pad={{ horizontal: "small" }}
-              justify="end"
-              align="center"
-              direction="row"
-              flex={true}
-              wrap={false}
-            >
-              <EditAnchor draft_id={this.props.draft_id} />
-            </Box>
-          )}
-        />
       </Box>
     );
   }
@@ -97,17 +72,22 @@ class DraftDefaultHeader extends React.Component {
 DraftDefaultHeader.propTypes = {
   match: PropTypes.object.isRequired,
   draft: PropTypes.object,
-  id: PropTypes.string
+  id: PropTypes.string,
+  error: PropTypes.object,
+  draft_id: PropTypes.string,
+  canUpdate: PropTypes.bool
 };
 
 function mapStateToProps(state) {
   return {
-    draft_id: state.drafts.getIn(["current_item", "id"]),
-    draft: state.drafts.getIn(["current_item", "data"]),
-    error: state.drafts.getIn(["current_item", "error"]),
-    schema: state.drafts.getIn(["current_item", "schema"]),
-    formData: state.drafts.getIn(["current_item", "formData"]),
-    depositGroups: state.auth.getIn(["currentUser", "depositGroups"])
+    draft_id: state.draftItem.get("id"),
+    status: state.draftItem.get("status"),
+    canUpdate: state.draftItem.get("can_update"),
+    draft: state.draftItem.get("metadata"),
+    errors: state.draftItem.get("errors"),
+    schema: state.draftItem.get("schema"),
+    formData: state.draftItem.get("formData")
+    // depositGroups: state.auth.getIn(["currentUser", "depositGroups"])
   };
 }
 

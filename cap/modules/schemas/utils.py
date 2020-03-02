@@ -21,38 +21,56 @@
 # In applying this license, CERN does not
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
-
 """Utils for Schemas module."""
 
-from invenio_db import db
+from itertools import groupby
 
-from invenio_jsonschemas.errors import JSONSchemaNotFound
 from .models import Schema
+from .permissions import ReadSchemaPermission
 
 
-def add_or_update_schema(fullpath=None, data=None):
-    """Add or update schema by fullpath, e.g. records/ana1-v0.0.1.json."""
-    try:
-        schema = Schema.get_by_fullpath(fullpath)
-        schema.experiment = data.get('experiment', None)
-        schema.fullname = data.get('fullname', None)
-        schema.is_deposit = data.get('is_deposit', False)
-        schema.json = data['jsonschema']
+def _filter_by_read_access(schemas_list):
+    """Return only schemas that user has read access to."""
+    return [x for x in schemas_list if ReadSchemaPermission(x).can()]
 
-        print('{} updated.'.format(fullpath))
 
-    except JSONSchemaNotFound:
-        schema = Schema(fullpath=fullpath,
-                        experiment=data.get('experiment', None),
-                        fullname=data.get('fullname', None),
-                        is_deposit=data.get('is_deposit', False),
-                        json=data['jsonschema'])
+def _filter_only_latest(schemas_list):
+    """Return only latest version of schemas."""
+    return [next(g) for k, g in groupby(schemas_list, lambda s: s.name)]
 
-        db.session.add(schema)
 
-        print('{} added.'.format(fullpath))
+def get_schemas_for_user(latest=True):
+    """Return all schemas current user has read access to."""
+    schemas = Schema.query \
+                    .order_by(
+                        Schema.name,
+                        Schema.major.desc(),
+                        Schema.minor.desc(),
+                        Schema.patch.desc()) \
+                    .all()
 
-    if data.get("allow_all", False):
-        schema.add_read_access_to_all()
+    schemas = _filter_by_read_access(schemas)
 
-    db.session.commit()
+    if latest:
+        schemas = _filter_only_latest(schemas)
+
+    return schemas
+
+
+def get_indexed_schemas_for_user(latest=True):
+    """Return all indexed schemas current user has read access to."""
+    schemas = Schema.query \
+                    .filter_by(is_indexed=True) \
+                    .order_by(
+                        Schema.name,
+                        Schema.major.desc(),
+                        Schema.minor.desc(),
+                        Schema.patch.desc()) \
+                    .all()
+
+    schemas = _filter_by_read_access(schemas)
+
+    if latest:
+        schemas = _filter_only_latest(schemas)
+
+    return schemas

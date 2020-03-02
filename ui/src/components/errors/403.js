@@ -7,23 +7,12 @@ import PropTypes from "prop-types";
 
 const PermissionDenied = props => {
   return (
-    <Box flex={true}>
-      <Box
-        align="center"
-        full="horizontal"
-        pad="medium"
-        colorIndex="neutral-1-a"
-      />
-      <Box
-        fill={true}
-        flex={true}
-        colorIndex="light-2"
-        justify="center"
-        align="center"
-      >
+    <Box flex>
+      <Box fill flex colorIndex="light-2" justify="center" align="center">
         <Label>
-          {props.status} {props.message}
+          {props.status} {props.statusText}
         </Label>
+        <span>{props.message}</span>
         <Anchor
           icon={<FormPreviousLinkIcon />}
           label="Go back to dashboard"
@@ -37,7 +26,8 @@ const PermissionDenied = props => {
 
 PermissionDenied.propTypes = {
   status: PropTypes.number,
-  message: PropTypes.string
+  message: PropTypes.string,
+  statusText: PropTypes.string
 };
 
 export default PermissionDenied;

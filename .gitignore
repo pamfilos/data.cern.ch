@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *.pyc
 
+
 # C extensions
 *.so
 
@@ -20,6 +21,7 @@ lib64/
 parts/
 sdist/
 var/
+./src/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -53,8 +55,11 @@ coverage.xml
 # Django stuff:
 *.log
 
-# Sphinx documentation
+# Gitbook Documentation
+docs/_book/
 docs/_build/
+docs/node_modules
+
 
 # PyBuilder
 target/
@@ -83,6 +88,13 @@ ui/package-lock.json
 # Pycharm specific
 .idea
 .idea_modules
+.style.yapf
+
+# VS Code specific
+.vscode
 
 # Celery
 celerybeat-schedule.db
+
+# VS Code specific
+.vscode

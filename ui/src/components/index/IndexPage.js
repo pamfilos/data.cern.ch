@@ -10,8 +10,11 @@ import SearchPage from "../search/SearchPage";
 import Header from "../partials/Header";
 
 import Dashboard from "../dashboard/Dashboard";
-import SettingsIndex from "../settings/SettingsIndex";
-import DraftsIndex from "../drafts/DraftsIndex";
+
+import DraftsItemIndex from "../drafts/DraftsItemIndex";
+import SettingsIndex from "../settings";
+import WorkflowsIndex from "../workflows";
+
 import PublishedIndex from "../published/PublishedIndex";
 import GrommetFooter from "../footer/Footer";
 import NotFoundPage from "../errors/404";
@@ -21,33 +24,22 @@ class IndexPage extends React.Component {
     super(props);
   }
 
-  componentWillMount() {
-    if (!this.props.isLoggedIn) {
-      this.props.history.push({
-        pathname: "/login",
-        from: this.props.match.path
-      });
-    }
-  }
-
-  componentWillUpdate(nextProps) {
-    if (!nextProps.isLoggedIn) {
-      this.props.history.push("/login");
-    }
-  }
-
   render() {
     return (
       <Box flex={true}>
         <Header />
-        <Switch>
-          <Route exact path="/" component={Dashboard} />
-          <Route path="/search" component={SearchPage} />
-          <Route path="/published" component={PublishedIndex} />
-          <Route path="/drafts" component={DraftsIndex} />
-          <Route path="/settings" component={SettingsIndex} />
-          <Route component={NotFoundPage} />
-        </Switch>
+        <Box flex={true}>
+          <Switch>
+            <Route path="/drafts/:draft_id" component={DraftsItemIndex} />
+            <Route exact path="/" component={Dashboard} />
+            <Route exact path="/search" component={SearchPage} />
+            <Route exact path="/drafts" component={SearchPage} />
+            <Route path="/published" component={PublishedIndex} />
+            <Route path="/settings" component={SettingsIndex} />
+            <Route path="/workflows" component={WorkflowsIndex} />
+            <Route component={NotFoundPage} />
+          </Switch>
+        </Box>
         <GrommetFooter />
       </Box>
     );

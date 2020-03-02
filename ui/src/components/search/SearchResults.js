@@ -1,10 +1,9 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { withRouter } from "react-router";
-import { fromJS } from "immutable";
 import { connect } from "react-redux";
 import Truncate from "react-truncate";
-import AnnounceIcon from "grommet/components/icons/base/Announce";
+import TimeAgo from "react-timeago";
 import ReactTooltip from "react-tooltip";
 
 import Box from "grommet/components/Box";
@@ -12,8 +11,7 @@ import Anchor from "grommet/components/Anchor";
 import Label from "grommet/components/Label";
 import List from "grommet/components/List";
 import ListItem from "grommet/components/ListItem";
-import UserAdminIcon from "grommet/components/icons/base/UserAdmin";
-import EditIcon from "grommet/components/icons/base/Edit";
+import { KeywordLabel } from "../StyledComponents";
 
 class SearchResults extends React.Component {
   constructor(props) {
@@ -22,101 +20,94 @@ class SearchResults extends React.Component {
 
   render() {
     return this.props.results.length > 0 ? (
-      <Box full={true} colorIndex="light-1">
+      <Box
+        flex={true}
+        size={{ width: { max: "xxlarge" } }}
+        colorIndex="light-1"
+      >
         <List>
           {this.props.results.map((item, index) => {
-            let status = item.metadata._deposit.status;
-            let id =
-              status === "published"
-                ? item.metadata.control_number
-                : item.metadata._deposit.id;
-            let metadata = fromJS(item.metadata);
-            let objects = new Set();
+            let rights = "";
+            let {
+              id,
+              is_owner,
+              can_admin,
+              can_update,
+              updated,
+              status,
+              labels,
+              metadata = {}
+            } = item;
 
-            metadata.getIn(["main_measurements"], []).map(item => {
-              return item
-                .getIn(["signal_event_selection", "physics_objects"], [])
-                .map(item => {
-                  if (item.get("object")) objects.add(item.get("object"));
-                });
-            });
+            let {
+              general_title: general_title,
+              basic_info: { abstract: abstract } = {}
+            } = metadata;
+
+            if (!is_owner && (can_update || can_admin)) rights = "contributor";
+            else if (is_owner) rights = "owner";
 
             return (
-              <ListItem
-                size={{ height: "xsmall" }}
-                pad={{ vertical: "small" }}
-                key={`${id}-${index}`}
-              >
-                <Box direction="row" full={true}>
-                  <Box
-                    basis="1/3"
-                    full={true}
-                    align="start"
-                    separator="right"
-                    pad={{ horizontal: "medium" }}
-                  >
-                    <Box alignSelf="stretch" direction="row" justify="between">
-                      <ReactTooltip />
-                      <Label size="small" uppercase={true} truncate={true}>
-                        <Anchor
-                          path={
-                            status === "published"
-                              ? `/published/${id}`
-                              : `/drafts/${id}`
-                          }
-                          style={{
-                            textDecoration: "none",
-                            color: "black"
-                          }}
-                          data-tip={metadata.get("general_title")}
-                        >
-                          {metadata.get("general_title") || (
-                            <span
-                              style={{
-                                color: "#ccc"
-                              }}
-                            >
+              <ListItem key={`${id}-${index}`} separator="none" pad="none">
+                <Box
+                  separator="bottom"
+                  style={{ width: "100%" }}
+                  pad={{
+                    between: "small",
+                    horizontal: "medium",
+                    vertical: "small"
+                  }}
+                >
+                  <Box direction="row" justify="between">
+                    <Box>
+                      <Anchor
+                        path={
+                          status === "published"
+                            ? `/published/${id}`
+                            : `/drafts/${id}`
+                        }
+                        style={{ textDecoration: "none", color: "#666" }}
+                        reverse
+                        pad="none"
+                      >
+                        <Label size="medium">
+                          {general_title ? (
+                            <span> {general_title} </span>
+                          ) : (
+                            <span style={{ color: "#ccc" }}>
                               No title provided
                             </span>
                           )}
-                        </Anchor>
-                      </Label>
-                      <Box align="center" justify="center">
-                        {(item.can_admin && (
-                          <UserAdminIcon
-                            size="xsmall"
-                            data-tip="You have admin access."
-                          />
-                        )) ||
-                          (item.can_edit && (
-                            <EditIcon
-                              size="xsmall"
-                              data-tip="You have write access."
-                            />
-                          ))}
-                      </Box>
+                        </Label>
+                      </Anchor>
                     </Box>
-                    {status === "published" ? (
-                      <Label size="small" uppercase={true}>
-                        <AnnounceIcon size="xsmall" /> Published
-                      </Label>
-                    ) : null}
+                    <Box direction="row">
+                      <ReactTooltip />
+                      {rights &&
+                      <Box>
+                        <KeywordLabel> {rights} </KeywordLabel>
+                      </Box>
+                      }
+                      {labels.map(item => {
+                        return (
+                          <Box>
+                            {" "}
+                            <KeywordLabel> {item} </KeywordLabel>
+                          </Box>
+                        );
+                      })}
+                    </Box>
                   </Box>
-                  <Box
-                    basis="2/3"
-                    full={true}
-                    pad={{ horizontal: "medium" }}
-                    justify="center"
-                  >
-                    {metadata.getIn(["basic_info", "abstract"]) ? (
-                      <i>
-                        <Truncate lines={3} ellipsis={<span>...</span>}>
-                          {metadata.getIn(["basic_info", "abstract"]) || ""}
-                        </Truncate>
-                      </i>
-                    ) : (
-                      <i style={{ color: "#ddd" }}> no abstract </i>
-                    )}
+                  {abstract ? (
+                    <Box>
+                      <Truncate lines={3} ellipsis={<span>...</span>}>
+                        {abstract}
+                      </Truncate>
+                    </Box>
+                  ) : null}
+                  <Box direction="row" style={{ color: "#ccc" }}>
+                    <span>Updated&nbsp;</span>
+                    <TimeAgo date={updated} minPeriod="60" />
                   </Box>
                 </Box>
               </ListItem>
