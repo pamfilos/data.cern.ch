@@ -42,7 +42,8 @@ export const transformSchema = schema => {
   schema = {
     type: schema.type,
     properties: schema.properties,
-    dependencies: schema.dependencies
+    dependencies: schema.dependencies,
+    required: schema.required
   };
 
   return schema;
@@ -116,7 +117,7 @@ class DraftEditor extends React.Component {
                   onChange={change => {
                     this.props.formDataChange(change.formData);
                   }}
-                  errors={this.props.errors}
+                  extraErrors={this.props.extraErrors || {}}
                 />
                 <DraftJSONPreviewer />
               </Box>
@@ -155,6 +156,7 @@ function mapStateToProps(state) {
     metadata: state.draftItem.get("metadata"),
     formData: state.draftItem.get("formData"),
     errors: state.draftItem.get("errors"),
+    extraErrors: state.draftItem.get("extraErrors"),
     schemaErrors: state.draftItem.get("schemaErrors"),
     canUpdate: state.draftItem.get("can_update")
   };

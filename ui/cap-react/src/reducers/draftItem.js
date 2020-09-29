@@ -7,6 +7,7 @@ import * as workflowsActions from "../actions/workflows"; // Workflows Actions
 
 const initialState = Map({
   errors: [],
+  extraErrors: {},
   schemaErrors: [],
   formErrors: Set([]),
   actionsLayer: false,
@@ -164,7 +165,9 @@ export default function draftsReducer(state = initialState, action) {
         .set("formData", action.draft.metadata)
         .merge(Map(action.draft));
     case draftItemActions.PUBLISH_DRAFT_ERROR:
-      return state.set("loading", false);
+      return state
+        .set("extraErrors", action.errors)
+        .set("loading", false);
 
     case draftItemActions.GENERAL_TITLE_REQUEST:
       return state.set("generalTitleLoading", true);

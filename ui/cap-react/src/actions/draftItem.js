@@ -75,8 +75,9 @@ export const publishDraftSuccess = draft => ({
   type: PUBLISH_DRAFT_SUCCESS,
   draft
 });
-export const publishDraftError = () => ({
-  type: PUBLISH_DRAFT_ERROR
+export const publishDraftError = (errors = null) => ({
+  type: PUBLISH_DRAFT_ERROR,
+  errors
 });
 
 export const remove_loading = () => ({
@@ -519,7 +520,21 @@ export function postPublishDraft() {
         });
       })
       .catch(error => {
-        dispatch(publishDraftError());
+        let _errors = error.response.data.errors;
+        let errorTree = {};
+        _errors.map(e => {
+          let tmp = errorTree;
+          e.field.map(field => {
+            if (!tmp[field]) tmp[field] = {}
+            tmp = tmp[field];
+            console.log("TMP", tmp);
+          });
+
+          if (!tmp["__errors"]) tmp["__errors"] = []
+          tmp["__errors"].push(e.message);
+        });
+
+        dispatch(publishDraftError(errorTree));
         cogoToast.error(
           "There is an error, please make sure you are connected and try again",
           {
@@ -529,7 +544,7 @@ export function postPublishDraft() {
             hideAfter: 3
           }
         );
-        throw error.response;
+        throw errorTree;
       });
   };
 }
@@ -543,7 +558,7 @@ export function publishDraft(draft_id) {
         dispatch(push(`/published/${id}`));
       })
       .catch(error => {
-        dispatch(publishDraftError());
+        dispatch(publishDraftError(error));
         throw error;
       });
   };

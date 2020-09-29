@@ -37,5 +37,6 @@ deposit_validators = dict(Draft4Validator.VALIDATORS)
 # deposit_validators['x-validate-cadi-id'] = validate_cadi_id
 
 DepositValidator = extend(Draft4Validator, validators=deposit_validators)
-NoRequiredValidator = extend(Draft4Validator,
-                             validators={'required': lambda v, r, i, s: None})
+NoRequiredValidator_ = extend(Draft4Validator,
+                              validators={'required': lambda v, r, i, s: None})
+NoRequiredValidator = extend(Draft4Validator, {'required': None})

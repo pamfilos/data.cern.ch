@@ -26,29 +26,39 @@ class DepositForm extends Component {
   }
 
   _validate(formData, errors) {
-    // Example on how to add custom errors
-    // "errors" object is a representation of the schema field tree
-    // with an "addError" function attached to each property
-    // e.g.
-    // errors.basic_info.cadi_id.addError("boom");
+    // // DEPRECATED, we should now use `extraErrors` prop in RJSF
+    // // form to pass async errors
 
-    // TODO:  Updates error list with ASYNC ERRORs
-    if (!Array.isArray(this.props.errors)) return errors;
+    // // Example on how to add custom errors
+    // // "errors" object is a representation of the schema field tree
+    // // with an "addError" function attached to each property
+    // // e.g.
+    // // errors.basic_info.cadi_id.addError("boom");
 
-    this.props.errors.map(error => {
-      if (error.field) {
-        let errorObj = objectPath.get(errors, error.field);
-        errorObj.addError(error.message);
-      }
-    });
+    // // TODO:  Updates error list with ASYNC ERRORs
+    // if (!Array.isArray(this.props.errors)) return errors;
+
+    // this.props.errors.map(error => {
+    //   if (error.field) {
+    //     let errorObj = objectPath.get(errors, error.field);
+    //     errorObj.addError(error.message);
+    //   }
+    // });
 
     return errors;
   }
 
   transformErrors = errors => {
-    return errors.map(error => {
+    // Remove required field errors, since not needed for "save"
+    // as we ignore till the record gets published
+    errors  = errors
+      .filter((item) => item.name != "required");
+
+    errors.map(error => {
       // Update messages for undefined fields when required,
       // from "should be string" ==> "Either edit or remove"
+      if (error.name == "required") return null;
+
       if (error.message == "should be string") {
         let errorMessages = objectPath.get(this.props.formData, error.property);
         if (errorMessages == undefined) error.message = "Either edit or remove";
@@ -56,6 +66,8 @@ class DepositForm extends Component {
 
       return error;
     });
+
+    return errors
   };
 
   render() {
@@ -65,25 +77,32 @@ class DepositForm extends Component {
           <Form
             ref={this.props.formRef}
             style={{ marginBottom: "1em" }}
+            // formData, schema, uiSchema options
             schema={this.props.schema}
+            uiSchema={this.props.uiSchema}
+            formData={this.props.formData}
+
+            // RJSF form templates, widgets, fields
             FieldTemplate={FieldTemplate}
             ObjectFieldTemplate={ObjectFieldTemplate}
             ArrayFieldTemplate={ArrayFieldTemplate}
-            noHtml5Validate={true}
-            showErrorList={false}
             ErrorList={ErrorListTemplate}
             widgets={widgets}
             fields={fields}
-            uiSchema={this.props.uiSchema}
+
+            // Error handling
+            transformErrors={this.transformErrors}
+            extraErrors={this.props.extraErrors}
+            showErrorList={false}
             liveValidate={false}
             noValidate={false}
-            validate={this._validate.bind(this)}
-            onError={() => {}}
-            transformErrors={this.transformErrors}
-            formData={this.props.formData}
-            onBlur={() => {}}
-            extraErrors={this.props.extraErrors}
+            noHtml5Validate={true}
+
+            // on.. functions
             onChange={_debounce(this.props.onChange, 500)}
+            onBlur={() => {}}
+            onError={() => {}}
+
             formContext={{
               formRef: this.props.formRef,
               ...this.props.formContext
