@@ -596,6 +596,7 @@ class CAPDeposit(Deposit, Reviewable):
             except RefResolutionError:
                 raise DepositValidationError('Schema {} not found.'.format(
                     self['$schema']))
+            # blabla
         else:
             raise DepositValidationError('You need to provide a valid schema.')
 
