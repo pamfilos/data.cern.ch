@@ -57,3 +57,5 @@ repos
 isort
 validator
 utils
+bcc
+docstrings
