@@ -42,15 +42,19 @@ from cap.modules.access.utils import login_required
 
 from .models import Schema
 from .permissions import AdminSchemaPermission, ReadSchemaPermission
+
 from .serializers import (
     create_config_payload,
     link_serializer,
-    update_schema_serializer,
+    schema_serializer,
+    update_schema_serializer
 )
 from .utils import (
     check_allowed_patch_operation,
     check_allowed_patch_path,
+    get_indexed_schemas_for_user,
     get_schemas_for_user,
+    validate_schema_config
 )
 
 blueprint = Blueprint(
@@ -124,7 +128,8 @@ class SchemaAPI(MethodView):
         """Create new schema."""
         data = request.get_json()
 
-        serialized_data, errors = create_config_payload.load(data)
+        self._validate_config(data)
+        serialized_data, errors = schema_serializer.load(data)
 
         if errors:
             raise abort(400, errors)
@@ -153,6 +158,8 @@ class SchemaAPI(MethodView):
 
         with AdminSchemaPermission(schema).require(403):
             data = request.get_json()
+
+            self._validate_config(data)
             serialized_data, errors = update_schema_serializer.load(
                 data, partial=True
             )
@@ -251,6 +258,13 @@ class SchemaAPI(MethodView):
                 )
 
             return jsonify(schema.config_serialize())
+
+    def _validate_config(self, data):
+        config = data.get('config')
+        if config:
+            errors = validate_schema_config(config)
+            if errors:
+                raise abort(400, errors)
 
 
 schema_view_func = SchemaAPI.as_view('schemas')
