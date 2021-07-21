@@ -43,3 +43,10 @@ def revision(deposit, config=None):
         return record.revision_id
     except KeyError:
         return None
+
+
+def draft_revision(deposit, config=None):
+    try:
+        return deposit.revision_id
+    except KeyError:
+        return None

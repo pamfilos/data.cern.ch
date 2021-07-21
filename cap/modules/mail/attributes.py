@@ -187,7 +187,7 @@ def generate_recipients(record, config, action=None):
     return recipients, cc, bcc
 
 
-def generate_body(record, config, action):
+def generate_body(record, config, action, default_ctx={}):
     """
     Body generator for notification action.
     It requires a template and a context (dict of vars-values), to populate it.
@@ -203,7 +203,7 @@ def generate_body(record, config, action):
         "name": "title",
         "path": "general_title"
       }, {
-        "method": "submitter_mail"
+        "method": "submitter_email"
       }],
       "base_template_file": "mail/analysis_plain_text.html",
       "plain": false
@@ -212,35 +212,40 @@ def generate_body(record, config, action):
     In case of `method`, then the message will be retrieved from the result of
     the method. It's implementation should always be in the mail.custom.messages.py file  # noqa
     """
-    body_config = config.get('body')
-    if not body_config:
-        return None, get_config_default(action, 'template'), None
+    body_config = config.get('body', {})
 
     # first get the body information
-    func = body_config.get('method')
-    if func:
-        try:
-            custom_message_func = getattr(custom_body, func)
-            body = custom_message_func(record, config)
-        except AttributeError as exc:
-            current_app.logger.error(
-                f'Body function not found. Providing default body.\n'
-                f'Error: {exc.args[0]}')
-            body = None
-    else:
-        body = populate_template_from_ctx(
-            record, body_config, action,
-            module=custom_body
-        )
+    # func = body_config.get('method')
+    # if func:
+    #     try:
+    #         custom_message_func = getattr(custom_body, func)
+    #         body = custom_message_func(record, config)
+    #     except AttributeError as exc:
+    #         current_app.logger.error(
+    #             f'Body function not found. Providing default body.\n'
+    #             f'Error: {exc.args[0]}')
+    #         body = None
+    # else:
+    body = populate_template_from_ctx(
+        record, body_config, action,
+        module=custom_body, type="body",
+        default_ctx=default_ctx
+    )
 
-    # then we get the template info if available
-    plain = body_config.get('plain')
-    base = body_config.get('base_template', get_config_default(action, 'template'))  # noqa
+    base = "mail/base_plain.html"
 
-    return body, base, plain
+    if body_config.get('plain'):
+        base = "mail/base_plain.html"
+
+    if body_config.get('base_template'):
+        base = body_config.get('base_template')
+        # # then we get the template info if available
+        # base = body_config.get('base_template', get_config_default(action, 'body'))  # noqa
+
+    return body, base
 
 
-def generate_subject(record, config, action):
+def generate_subject(record, config, action, default_ctx={}):
     """
     Subject generator for notification action.
     It requires a template and a context (dict of vars-values), to populate it.
@@ -279,5 +284,6 @@ def generate_subject(record, config, action):
     return populate_template_from_ctx(
         record, subj_config, action,
         module=custom_subjects,
+        default_ctx=default_ctx,
         type='subject'
     )

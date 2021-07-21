@@ -27,7 +27,7 @@ from .attributes import generate_recipients, generate_subject, generate_body
 from .custom.body import working_url
 from .custom.subject import draft_id, published_id, revision
 from .tasks import create_and_send
-from .utils import is_review_request
+from .utils import UnsuccessfulMail, is_review_request
 
 
 def post_action_notifications(sender, action=None, pid=None, deposit=None):
@@ -54,13 +54,29 @@ def post_action_notifications(sender, action=None, pid=None, deposit=None):
         .get('actions', {}) \
         .get(action, [])
 
+    # retrieve the most common Deposit/Record attributes, used in messages
+    # try:
+    msg_ctx = {
+        'published_id': published_id(deposit),
+        'draft_id': draft_id(deposit),
+        'revision': revision(deposit),
+        'working_url': working_url(deposit),
+    }
+
     for config in action_configs:
         recipients, cc, bcc = generate_recipients(deposit, config, action)
         if not any([recipients, cc, bcc]):
             continue
 
-        subject = generate_subject(deposit, config, action)
-        body, base, plain = generate_body(deposit, config, action)
+        try:
+            subject = generate_subject(deposit, config, action,
+                                       default_ctx=msg_ctx)
+            body, base = generate_body(deposit, config, action,
+                                       default_ctx=msg_ctx)
+        except UnsuccessfulMail as err:
+            # FIX log error with recid, msg, ctx, etc
+            continue
+        plain = config.get('body', {}).get('plain')
 
         mail_ctx = {
             'sender': mail_sender,
@@ -70,14 +86,9 @@ def post_action_notifications(sender, action=None, pid=None, deposit=None):
             'bcc': bcc
         }
 
-        # retrieve the most common Deposit/Record attributes, used in messages
-        msg_ctx = {
-            'published_id': published_id(deposit),
-            'draft_id': draft_id(deposit),
-            'revision': revision(deposit),
-            'working_url': working_url(deposit),
+        msg_ctx.update({
             'message': body
-        }
+        })
 
         create_and_send.delay(
             base, msg_ctx, mail_ctx,

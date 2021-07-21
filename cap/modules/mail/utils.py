@@ -28,25 +28,40 @@ from flask import abort, current_app, render_template, \
 from jinja2.exceptions import TemplateNotFound, TemplateSyntaxError
 from werkzeug.exceptions import BadRequest
 
+from . import custom as custom_methods
+
 EMAIL_REGEX = re.compile(r'(?!.*\.\.)(^[^.][^@\s]+@[^@\s]+\.[^@\s.]+$)')
 
 CONFIG_DEFAULTS = {
     'review': {
         'subject': 'New Review on Analysis | CERN Analysis Preservation',
-        'template': ('mail/analysis_review.html', None)
+        'body': {
+            "plain": ('mail/analysis_review.html', None),
+            "html": ('mail/analysis_review.html', None),
+        }
     },
     'publish': {
         'subject': 'New Published Analysis | CERN Analysis Preservation',
-        'template': ('mail/analysis_published.html', None)
+        'body': {
+            "plain": ('mail/analysis_published_plain.html', None),
+            "html": ('mail/analysis_published.html', None),
+        }
     }
 }
 
 
-def get_config_default(action, type):
+class UnsuccessfulMail(Exception):
+    """Error during sending email."""
+    def __init__(self, data=None, **kwargs):
+        """Initialize exception."""
+        super(UnsuccessfulMail, self).__init__(**kwargs)
+
+
+def get_config_default(action, type, plain=False):
     """Get defaults for different actions/mail info."""
     return CONFIG_DEFAULTS \
         .get(action, {}) \
-        .get(type, f'Action {action} happened.')
+        .get(type)
 
 
 def path_value_equals(element, JSON):
@@ -62,7 +77,7 @@ def path_value_equals(element, JSON):
 
 
 def populate_template_from_ctx(record, config, action=None,
-                               module=None, type=None):
+                               module=None, type=None, default_ctx={}):
     """
     Render a template according to the context provided in the schema.
     Args:
@@ -75,29 +90,37 @@ def populate_template_from_ctx(record, config, action=None,
 
     Returns: The rendered string, using the required context values.
     """
-    config_ctx = config.get('ctx', {})
+    config_ctx = config.get('ctx', [])
     template = config.get('template')
     template_file = config.get('template_file')
 
+    render = render_template
     if template:
         render = render_template_string
+        template_to_render = template
+    elif template_file:
+        template_to_render = template_file
+    else:
+        if type is "body":
+            mime_type = "plain" if config.get('plain') else "html"
+            template_to_render = \
+                CONFIG_DEFAULTS.get(action, {}).get(type, {}).get(mime_type)
+        else:
+            template_to_render = \
+                CONFIG_DEFAULTS.get(action, {}).get(type, {})
 
-    if template_file:
-        render = render_template
-        template = template_file
+    if not template_to_render:
+        # default_template = CONFIG_DEFAULTS.get(action, {}).get(type)
+        # if not default_template:
+        msg = f'Not template passed and no default templates found. ' \
+                f'Notification procedure aborted.'
+        current_app.logger.error(msg)
+        # abort(404, msg)
 
-    if not (template or template_file):
-        default_template = CONFIG_DEFAULTS.get(action, {}).get(type)
-        if not default_template:
-            msg = f'Not template passed and no default templates found. ' \
-                  f'Notification procedure aborted.'
-            current_app.logger.error(msg)
-            abort(404, msg)
+        # render = render_template
+        # template = default_template
 
-        render = render_template
-        template = default_template
-
-    ctx = {}
+    ctx = {**default_ctx}
     for attrs in config_ctx:
         if attrs.get('path'):
             name = attrs['name']
@@ -105,7 +128,7 @@ def populate_template_from_ctx(record, config, action=None,
         elif attrs.get('method'):
             try:
                 name = attrs['method']
-                custom_func = getattr(module, name)
+                custom_func = getattr(custom_methods, name)
                 val = custom_func(record, config)
             except AttributeError:
                 val = None
@@ -113,19 +136,19 @@ def populate_template_from_ctx(record, config, action=None,
         ctx.update({name: val})
 
     try:
-        return render(template, **ctx)
+        return render(template_to_render, **ctx)
     except TemplateNotFound as ex:
         msg = f'Template {ex.name} not found. Notification procedure aborted.'
         current_app.logger.error(msg)
-        abort(404, msg)
+        raise UnsuccessfulMail()
     except TemplateSyntaxError as ex:
         msg = f'Template error: {ex.message}. Notification procedure aborted.'
         current_app.logger.error(msg)
-        abort(400, msg)
+        raise UnsuccessfulMail()
     except TypeError as ex:
         msg = f'Context for template is empty. Notification procedure aborted.'
         current_app.logger.error(msg)
-        abort(400, msg)
+        raise UnsuccessfulMail()
 
 
 def update_mail_list(record, config, mails):
@@ -140,8 +163,14 @@ def update_mail_list(record, config, mails):
         }]
     }
     """
-    mails_list = config.get('default')
-    formatted_list = config.get('formatted')
+    try:
+        mails_list = config.get('default', [])
+        formatted_list = config.get('formatted', [])
+    except AttributeError:
+        current_app.logger.error(
+            "Mail configuration is not a dict with 'default', 'formatted' keys"
+        )
+        return
 
     if mails_list:
         mails += mails_list

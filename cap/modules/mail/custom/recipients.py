@@ -45,7 +45,6 @@ def get_cms_stat_recipients(record, config=None):
     """Adds PAGS committee data from JSON file."""
     committee_pags = current_app.config.get("CMS_STATS_COMMITEE_AND_PAGS")
     working_group = record.get('analysis_context', {}).get('wg')
-
     if working_group and committee_pags:
         return committee_pags.get(working_group, {}).get("contacts", [])
     return []
