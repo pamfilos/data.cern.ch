@@ -28,7 +28,7 @@ from .attributes import generate_recipients, generate_subject, generate_body
 from .custom.body import submitter_email, working_url
 from .custom.subject import draft_id, published_id, revision
 from .tasks import create_and_send
-from .utils import UnsuccessfulMail, is_review_request
+from .utils import UnsuccessfulMail, generate_ctx, is_review_request
 from cap.modules.deposit.api import CAPDeposit
 from celery import shared_task
 from invenio_records.api import Record
@@ -45,6 +45,8 @@ def post_action_notifications(sender, action=None, pid=None, deposit=None):
     - Create the message and mail contexts (attributes), and pass them to
       the `create_and_send` task.
     """
+    # TODO: check if schema notifs before send
+
     # in case of review, don't send mail on other related actions
     if not is_review_request():
         return
@@ -87,6 +89,9 @@ def send_deposit_notifications(record_uuid, user_id, action):
     }
 
     for config in action_configs:
+        ctx_config = config.get("ctx", [])
+        default_ctx = generate_ctx(ctx_config, record=deposit)
+        msg_ctx = {**default_ctx, **msg_ctx}
         recipients, cc, bcc = generate_recipients(deposit,
                                                   config,
                                                   default_ctx=msg_ctx)
@@ -99,7 +104,8 @@ def send_deposit_notifications(record_uuid, user_id, action):
             body, base = generate_body(deposit, config,
                                        default_ctx=msg_ctx)
         except UnsuccessfulMail as err:
-            # TODO: FIX log error with recid, msg, ctx, etc
+            current_app.logger.error(
+                f"UnsuccessfulMail | Rec_id:{err.rec_uuid} - {err.msg}")
             continue
         plain = config.get('body', {}).get('plain')
 
@@ -112,7 +118,7 @@ def send_deposit_notifications(record_uuid, user_id, action):
         }
 
         msg_ctx.update({
-            'message': body
+            'mail_body': body
         })
 
         create_and_send.delay(

@@ -154,6 +154,7 @@ DEFAULT_CONFIG_WITH_ERRORS = {
 }
 
 DEFAULT_CONFIG_WITH_ERRORS_ASSERTIONS = {
+    "validationError": True,
     "ctx": {"cadi_id": {"type": "deposit", "path": "analysis_context.cadi_id"}},
     "response": 202,
     "outbox": {
@@ -211,6 +212,76 @@ SIMPLE_CONFIG_ASSERTIONS = {
     },
 }
 
+SIMPLE_GLOBAL_CTX_CONFIG = {
+    "notifications": {
+        "actions": {
+            "publish": [
+                {
+                    "ctx": [{"name": "cadi_id", "path": "analysis_context.cadi_id"}],
+                    "subject": {
+                        "template": "Questionnaire for {{ cadi_id }} published."
+                    },
+                    "body": {"template": "Message with cadi id: {{ cadi_id }}."},
+                    "recipients": {"recipients": ["test-recipient@cern0.ch"]},
+                }
+            ]
+        }
+    }
+}
+SIMPLE_GLOBAL_CTX_CONFIG_ASSERTIONS = {
+    "ctx": {"cadi_id": {"type": "deposit", "path": "analysis_context.cadi_id"}},
+    "response": 202,
+    "outbox": {
+        0: {
+            "subject": [("in", "Questionnaire for {cadi_id} published")],
+            "html": [("in", "Message with cadi id: {cadi_id}.")],
+            "recipients": {
+                "recipients": [
+                    ("in", "test-recipient@cern0.ch"),
+                ]
+            },
+        }
+    },
+}
+
+SIMPLE_GLOBAL_CTX_2_CONFIG = {
+    "notifications": {
+        "actions": {
+            "publish": [
+                {
+                    "ctx": [
+                        {"name": "cadi_idd", "path": "analysis_context.cadi_id"},
+                        {
+                            "name": "cadi_id_error",
+                            "path": "analysis_context.cadi_id_wrong",
+                        },
+                    ],
+                    "subject": {
+                        "template": "Questionnaire for {{ cadi_id }} published."
+                    },
+                    "body": {"template": "Message with cadi id: {{ cadi_id }}."},
+                    "recipients": {"recipients": ["test-recipient@cern0.ch"]},
+                }
+            ]
+        }
+    }
+}
+SIMPLE_GLOBAL_CTX_2_CONFIG_ASSERTIONS = {
+    "ctx": {"cadi_id": {"type": "deposit", "path": "analysis_context.cadi_id"}},
+    "response": 202,
+    "outbox": {
+        0: {
+            "subject": [("in", "Questionnaire for  published")],
+            "html": [("in", "Message with cadi id: .")],
+            "recipients": {
+                "recipients": [
+                    ("in", "test-recipient@cern0.ch"),
+                ]
+            },
+        }
+    },
+}
+
 NESTED_CONDITION_WITH_ERRORS_CONFIG = {
     "notifications": {
         "actions": {
@@ -250,6 +321,48 @@ NESTED_CONDITION_WITH_ERRORS_CONFIG_ASSERTIONS = {
     "response": 202,
     "outbox": {},
 }
+
+
+HAS_PERMISSION_CONFIG = {
+    "notifications": {
+        "actions": {
+            "publish": [
+                {
+                    "recipients": {
+                        "recipients": [
+                            {
+                                "checks": [
+                                    {
+                                        "path": "analysis_context.cadi_id",
+                                        "condition": "exists",
+                                    },
+                                    {
+                                        "condition": "is_egroup_member",
+                                        "value": "cms-access",
+                                    },
+                                ],
+                                "mails": {"default": ["test@cern.ch"]},
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}
+HAS_PERMISSION_CONFIG_ASSERTIONS = {
+    "response": 202,
+    "outbox": {
+        0: {
+            "recipients": {
+                "recipients": [
+                    ("in", "test@cern.ch"),
+                ]
+            },
+        }
+    },
+}
+
 
 WRONG_TEMPLATE_FILE_CONFIG = {
     "notifications": {
@@ -296,7 +409,7 @@ CTX_EXAMPLES_CONFIG = {
                             working_id : {{working_id}} |
                             working_url : {{working_url}} |
                             submitter_email : {{submitter_email}} |
-                            reviewer_email : {{reviewer_email}} |
+                            creator_email : {{creator_email}} |
                             cms_stats_committee_by_pag : {{cms_stats_committee_by_pag}} |
                             get_cms_stat_recipients : {{get_cms_stat_recipients}} |
                         """,
@@ -311,7 +424,7 @@ CTX_EXAMPLES_CONFIG = {
                             {"method": "working_id"},
                             {"method": "working_url"},
                             {"method": "submitter_email"},
-                            {"method": "reviewer_email"},
+                            {"method": "creator_email"},
                             {"method": "cms_stats_committee_by_pag"},
                             {"method": "get_cms_stat_recipients"},
                         ],
@@ -339,6 +452,7 @@ CTX_EXAMPLES_CONFIG_ASSERTIONS = {
             "recipients": {
                 "recipients": [
                     ("in", "test-recipient@cern0.ch"),
+                    ("in", "admin-rev-1@cern0.ch"),
                     ("in", "admin-rev-2@cern0.ch"),
                 ]
             },
@@ -361,8 +475,14 @@ WRONG_CTX_CONFIG = {
                         """,
                         "ctx": [
                             {"name": "cadi_id", "path": "analysis_context.cadi_id"},
-                            {"name": "wrong_cadi_id", "path": "analysis_context.cadi_id.0"},
-                            {"name": "wrong_cadi_id_2", "path": "analysis_context.cadi_id.[]"},
+                            {
+                                "name": "wrong_cadi_id",
+                                "path": "analysis_context.cadi_id.0",
+                            },
+                            {
+                                "name": "wrong_cadi_id_2",
+                                "path": "analysis_context.cadi_id.[]",
+                            },
                         ],
                         "plain": True,
                     },
@@ -372,21 +492,28 @@ WRONG_CTX_CONFIG = {
                             {"method": "get_cms_stat_recipients"},
                             {
                                 "mails": {
-                                    "formatted": [{
-                                        "template": "{% if cadi_id %}hn-cms-{{ cadi_id }}@cern0.ch{% endif %}",
-                                        "ctx": [{
-                                        "name": "cadi_id",
-                                        "path": "analysis_context.cadi_id"
-                                        }]
-                                    }, {
-                                        "template": "{% if cadi_id %}mail-{{ cadi_id }}@cern0.ch{% endif %}",
-                                        "ctx": [{
-                                        "name": "cadi_id",
-                                        "path": "analysis_context.cadi_id"
-                                        }]
-                                    }]
-                                    }
-                            }
+                                    "formatted": [
+                                        {
+                                            "template": "{% if cadi_id %}hn-cms-{{ cadi_id }}@cern0.ch{% endif %}",
+                                            "ctx": [
+                                                {
+                                                    "name": "cadi_id",
+                                                    "path": "analysis_context.cadi_id",
+                                                }
+                                            ],
+                                        },
+                                        {
+                                            "template": "{% if cadi_id %}mail-{{ cadi_id }}@cern0.ch{% endif %}",
+                                            "ctx": [
+                                                {
+                                                    "name": "cadi_id",
+                                                    "path": "analysis_context.cadi_id",
+                                                }
+                                            ],
+                                        },
+                                    ]
+                                }
+                            },
                         ]
                     },
                 }
@@ -429,35 +556,51 @@ WRONG_TEMPLATE_CONFIG = {
                         """,
                         "ctx": [
                             {"name": "cadi_id", "path": "analysis_context.cadi_id"},
-                            {"name": "wrong_cadi_id", "path": "analysis_context.cadi_id.0"},
-                            {"name": "wrong_cadi_id_2", "path": "analysis_context.cadi_id.[]"},
+                            {
+                                "name": "wrong_cadi_id",
+                                "path": "analysis_context.cadi_id.0",
+                            },
+                            {
+                                "name": "wrong_cadi_id_2",
+                                "path": "analysis_context.cadi_id.[]",
+                            },
                         ],
                         "plain": True,
                     },
                     "recipients": {
                         "recipients": [
                             "test-recipient@cern0.ch",
-                            3,
-                            ["test-recipient_error@cern0.ch","test-recipient_error2@cern0.ch" ],
+                            # 3,
+                            [
+                                "test-recipient_error@cern0.ch",
+                                "test-recipient_error2@cern0.ch",
+                            ],
                             {"method": "get_cms_stat_recipients"},
                             {
                                 "mails": {
-                                    "default": ['user7@cern0.ch', 4],
-                                    "formatted": [{
-                                        "templfate": "{% if cadi_id %}hn-cms-{{ cadi_id }}@cern0.ch{% endif %}",
-                                        "ctx": [{
-                                        "name": "cadi_id",
-                                        "path": "analysis_context.cadi_id"
-                                        }]
-                                    }, {
-                                        "template": "{% if cadi_id %}mail-{{ cadi_id }}@cern0.ch{% endif %}",
-                                        "ctx": [{
-                                        "name": "cadi_id",
-                                        "path": "analysis_context.cadi_id"
-                                        }]
-                                    }]
-                                    }
-                            }
+                                    # "default": ['user7@cern0.ch', 4],
+                                    "formatted": [
+                                        {
+                                            "templfate": "{% if cadi_id %}hn-cms-{{ cadi_id }}@cern0.ch{% endif %}",
+                                            "ctx": [
+                                                {
+                                                    "name": "cadi_id",
+                                                    "path": "analysis_context.cadi_id",
+                                                }
+                                            ],
+                                        },
+                                        {
+                                            "template": "{% if cadi_id %}mail-{{ cadi_id }}@cern0.ch{% endif %}",
+                                            "ctx": [
+                                                {
+                                                    "name": "cadi_id",
+                                                    "path": "analysis_context.cadi_id",
+                                                }
+                                            ],
+                                        },
+                                    ]
+                                }
+                            },
                         ]
                     },
                 }
@@ -467,6 +610,7 @@ WRONG_TEMPLATE_CONFIG = {
     }
 }
 WRONG_TEMPLATE_CONFIG_ASSERTIONS = {
+    "validationError": True,
     "ctx": {"cadi_id": {"type": "deposit", "path": "analysis_context.cadi_id"}},
     "response": 202,
     "outbox": {
@@ -500,14 +644,14 @@ MUTLIPLE_PUBLISH_CONFIG = {
                         ],
                     },
                     "body": {
-                        "template_file": "mail/body/questionnaire_message_published_plain.html",
+                        "template_file": "mail/body/experiments/cms/questionnaire_message_published_plain.html",
                         "ctx": [
                             {"name": "cadi_id", "path": "analysis_context.cadi_id"},
                             {"name": "title", "path": "general_title"},
                             {"method": "published_url"},
                             {"method": "submitter_email"},
                         ],
-                        "base_template": "mail/analysis_plain_text.html",
+                        # "base_template": "mail/analysis_plain_text.html",
                         "plain": True,
                     },
                     "recipients": {
@@ -548,7 +692,7 @@ MUTLIPLE_PUBLISH_CONFIG = {
                         ],
                     },
                     "body": {
-                        "template_file": "mail/body/questionnaire_message_published.html",
+                        "template_file": "mail/body/experiments/cms/questionnaire_message_published.html",
                         "ctx": [
                             {"name": "cadi_id", "path": "analysis_context.cadi_id"},
                             {"name": "title", "path": "general_title"},
@@ -586,7 +730,7 @@ MUTLIPLE_PUBLISH_CONFIG = {
 MUTLIPLE_PUBLISH_CONFIG_ASSERTIONS = {
     "ctx": {
         "cadi_id": {"type": "deposit", "path": "analysis_context.cadi_id"},
-        "published_id": {"type": "response", "path": "recid"}
+        "published_id": {"type": "response", "path": "recid"},
     },
     "response": 202,
     "outbox": {
@@ -653,7 +797,9 @@ NESTED_CONDITIONS_CONFIG = {
                                         ],
                                     },
                                 ],
-                                "mails": {"default": ["nested-conditions-mail@cern.ch"]},
+                                "mails": {
+                                    "default": ["nested-conditions-mail@cern.ch"]
+                                },
                             },
                         ]
                     }
@@ -678,7 +824,7 @@ NESTED_CONDITIONS_CONFIG = {
                                     }
                                 ],
                                 "mails": {"default": ["wrong-condition@cern.ch"]},
-                            }
+                            },
                         ]
                     }
                 },
@@ -692,12 +838,14 @@ NESTED_CONDITIONS_CONFIG = {
                                         "condition": "exists",
                                     }
                                 ],
-                                'method': ['get_submitter'],
-                                "mails": {"default": ["condition-with-methods@cern.ch"]},
+                                "method": ["get_submitter"],
+                                "mails": {
+                                    "default": ["condition-with-methods@cern.ch"]
+                                },
                             }
                         ]
                     }
-                }
+                },
             ]
         }
     }
@@ -712,22 +860,18 @@ NESTED_CONDITIONS_CONFIG_ASSERTIONS = {
             "recipients": {
                 "recipients": [
                     ("in", "pdf-forum-placeholder@cern.ch"),
-                    ("in", "nested-conditions-mail@cern.ch")
+                    ("in", "nested-conditions-mail@cern.ch"),
                 ]
             },
         },
         1: {
-            "recipients": {
-                "recipients": [
-                    ("in", "wrong-condition@cern.ch")
-                ]
-            },
+            "recipients": {"recipients": [("in", "wrong-condition@cern.ch")]},
         },
         2: {
             "recipients": {
                 "recipients": [
                     ("in", "condition-with-methods@cern.ch"),
-                    ("in", "superuser@cern.ch")
+                    ("in", "superuser@cern.ch"),
                 ]
             },
         },
@@ -1007,6 +1151,393 @@ CTX_METHOD_MISSING_CONFIG = {
                     "recipients": {"recipients": ["test-recipient@cern0.ch"]},
                 }
             ]
+        }
+    }
+}
+
+CMS_STATS_QUESTIONNAIRE = {
+    "notifications": {
+        "actions": {
+            "publish": [
+                {
+                    "subject": {
+                        "template": 'Questionnaire for {{ cadi_id if cadi_id else "" }} {{ published_id }} - {{ "New Version of Published Analysis" if revision > 0 else "New Published Analysis" }} | CERN Analysis Preservation',
+                        "ctx": [
+                            {"name": "cadi_id", "path": "analysis_context.cadi_id"},
+                            {"method": "revision"},
+                            {"method": "published_id"},
+                        ],
+                    },
+                    "body": {
+                        "template_file": "mail/body/experiments/cms/questionnaire_message_published.html",
+                        "ctx": [
+                            {"name": "cadi_id", "path": "analysis_context.cadi_id"},
+                            {"name": "title", "path": "general_title"},
+                            {"method": "published_url"},
+                            {"method": "cms_stats_committee_by_pag"},
+                            {"method": "submitter_email"},
+                        ],
+                    },
+                    "recipients": {
+                        "bcc": [
+                            {"method": "get_cms_stat_recipients"},
+                            {"method": "get_owner"},
+                            {"method": "get_submitter"},
+                            {
+                                "checks": [
+                                    {
+                                        "path": "parton_distribution_functions",
+                                        "condition": "exists",
+                                    }
+                                ],
+                                "mails": {"default": ["pdf-forum-placeholder@cern.ch"]},
+                            },
+                            {
+                                "op": "or",
+                                "checks": [
+                                    {
+                                        "path": "multivariate_discriminants.mva_use",
+                                        "condition": "equals",
+                                        "value": "Yes",
+                                    },
+                                    {"path": "ml_app_use", "condition": "exists"},
+                                    {
+                                        "path": "ml_survey.options",
+                                        "condition": "equals",
+                                        "value": "Yes",
+                                    },
+                                    {
+                                        "op": "and",
+                                        "checks": [
+                                            {
+                                                "path": "multivariate_discriminants.use_of_centralized_cms_apps.options",
+                                                "condition": "exists",
+                                            },
+                                            {
+                                                "path": "multivariate_discriminants.use_of_centralized_cms_apps.options",
+                                                "condition": "is_not_in",
+                                                "value": "No",
+                                            },
+                                        ],
+                                    },
+                                ],
+                                "mails": {
+                                    "default": ["cms-conveners-placeholder@cern.ch"]
+                                },
+                            },
+                        ]
+                    },
+                },
+                {
+                    "subject": {
+                        "template": 'Questionnaire for {{ cadi_id if cadi_id else "" }} {{ published_id }} - {{ "New Version of Published Analysis" if revision > 0 else "New Published Analysis" }} | CERN Analysis Preservation',
+                        "ctx": [
+                            {"name": "cadi_id", "path": "analysis_context.cadi_id"},
+                            {"method": "revision"},
+                            {"method": "published_id"},
+                        ],
+                    },
+                    "body": {
+                        "template_file": "mail/body/experiments/cms/questionnaire_message_published_plain.html",
+                        "ctx": [
+                            {"name": "cadi_id", "path": "analysis_context.cadi_id"},
+                            {"name": "title", "path": "general_title"},
+                            {"method": "published_url"},
+                            {"method": "cms_stats_committee_by_pag"},
+                            {"method": "submitter_email"},
+                        ],
+                        "base_template": "mail/body/analysis_plain_text.html",
+                        "plain": True,
+                    },
+                    "recipients": {
+                        "bcc": [
+                            {
+                                "checks": [
+                                    {
+                                        "path": "analysis_context.cadi_id",
+                                        "condition": "exists",
+                                    }
+                                ],
+                                "mails": {
+                                    "formatted": [
+                                        {
+                                            "template": "{% if cadi_id %}hn-cms-{{ cadi_id }}@cern0.ch{% endif %}",
+                                            "ctx": [
+                                                {
+                                                    "name": "cadi_id",
+                                                    "path": "analysis_context.cadi_id",
+                                                }
+                                            ],
+                                        }
+                                    ]
+                                },
+                            }
+                        ]
+                    },
+                },
+                # {
+                #     "subject": {
+                #         "template": 'Questionnaire for {{ cadi_id if cadi_id else "" }} {{ published_id }} - {{ "New Version of Published Analysis" if revision > 0 else "New Published Analysis" }} | CERN Analysis Preservation',
+                #     },
+                #     "body": {
+                #         "template_file": "mail/body/experiments/cms/questionnaire_message_published.html",
+                #         "ctx": [
+                #             {"name": "cadi_id", "path": "analysis_context.cadi_id"},
+                #             {"name": "title", "path": "general_title"},
+                #             {"method": "published_url"},
+                #             {"method": "cms_stats_committee_by_pag"},
+                #             {"method": "submitter_email"},
+                #         ],
+                #         "base_template": "mail/analysis_plain_text.html",
+                #         "plain": true,
+                #     },
+                #     "recipients": {
+                #         "bcc": [
+                #             {
+                #                 "op": "or",
+                #                 "checks": [
+                #                     {
+                #                         "path": "multivariate_discriminants.mva_use",
+                #                         "condition": "equals",
+                #                         "value": "Yes",
+                #                     },
+                #                     {"path": "ml_app_use", "condition": "exists"},
+                #                     {
+                #                         "path": "ml_survey.options",
+                #                         "condition": "equals",
+                #                         "value": "Yes",
+                #                     },
+                #                     {
+                #                         "op": "and",
+                #                         "checks": [
+                #                             {
+                #                                 "path": "multivariate_discriminants.use_of_centralized_cms_apps.options",
+                #                                 "condition": "exists",
+                #                             },
+                #                             {
+                #                                 "path": "multivariate_discriminants.use_of_centralized_cms_apps.options",
+                #                                 "condition": "is_not_in",
+                #                                 "value": "No",
+                #                             },
+                #                         ],
+                #                     },
+                #                 ],
+                #                 "mails": {
+                #                     "default": [
+                #                         "cms-conveners-jira-placeholder@cern.ch"
+                #                     ]
+                #                 },
+                #             }
+                #         ]
+                #     },
+                # },
+            ],
+            # "review": [
+            #     {
+            #         "subject": {
+            #             "template": "Questionnaire for {{ cadi_id }} - New Review on Analysis | CERN Analysis Preservation",
+            #             "ctx": [
+            #                 {"name": "cadi_id", "path": "analysis_context.cadi_id"}
+            #             ],
+            #         },
+            #         "body": {
+            #             "template_file": "mail/body/experiments/cms/questionnaire_message_review.html",
+            #             "ctx": [
+            #                 {"name": "cadi_id", "path": "analysis_context.cadi_id"},
+            #                 {"name": "title", "path": "general_title"},
+            #                 {"method": "working_url"},
+            #                 {"method": "creator_email"},
+            #                 {"method": "submitter_email"},
+            #             ],
+            #         },
+            #         "recipients": {
+            #             "bcc": [{"method": "get_owner"}, {"method": "get_submitter"}]
+            #         },
+            #     },
+            #     {
+            #         "subject": {
+            #             "template": "Questionnaire for {{ cadi_id }} - New Review on Analysis | CERN Analysis Preservation",
+            #             "ctx": [
+            #                 {"name": "cadi_id", "path": "analysis_context.cadi_id"}
+            #             ],
+            #         },
+            #         "body": {
+            #             "template_file": "mail/body/experiments/cms/questionnaire_message_review_plain.html",
+            #             "ctx": [
+            #                 {"name": "cadi_id", "path": "analysis_context.cadi_id"},
+            #                 {"name": "title", "path": "general_title"},
+            #                 {"method": "working_url"},
+            #                 {"method": "creator_email"},
+            #                 {"method": "submitter_email"},
+            #             ],
+            #             "base_template": "mail/analysis_plain_text.html",
+            #             "plain": true,
+            #         },
+            #         "recipients": {
+            #             "bcc": [
+            #                 {
+            #                     "checks": [
+            #                         {
+            #                             "path": "analysis_context.cadi_id",
+            #                             "condition": "exists",
+            #                         },
+            #                         {
+            #                             "path": "parton_distribution_functions",
+            #                             "condition": "is_egroup_member",
+            #                             "value": "comittee-mail",
+            #                         },
+            #                     ],
+            #                     "mails": {
+            #                         "formatted": [
+            #                             {
+            #                                 "template": "{% if cadi_id %}hn-cms-{{ cadi_id }}@cern.ch{% endif %}",
+            #                                 "ctx": [
+            #                                     {
+            #                                         "name": "cadi_id",
+            #                                         "path": "analysis_context.cadi_id",
+            #                                     }
+            #                                 ],
+            #                             }
+            #                         ]
+            #                     },
+            #                 }
+            #             ]
+            #         },
+            #     },
+            # ],
+        }
+    }
+}
+
+CMS_STATS_QUESTIONNAIRE_ASSERTIONS = {
+    "ctx": {
+        "cadi_id": {"type": "deposit", "path": "analysis_context.cadi_id"},
+        "published_id": {"type": "response", "path": "recid"},
+    },
+    "response": 202,
+    "outbox": {
+        0: {
+            "subject": [
+                ("in", "Questionnaire for {cadi_id} {published_id}"),
+                ("in", "New Published Analysis"),
+            ],
+            "html": [
+                ("in", "ancode={cadi_id}"),
+                ("in", "Admin Rev 1 (primary)"),
+                ("in", "Admin Rev 2 (secondary)"),
+            ],
+            "recipients": {
+                "bcc": [
+                    ("in", "admin-rev-1@cern0.ch"),
+                    ("in", "admin-rev-2@cern0.ch"),
+                    ("in", "cms_user@cern.ch"),
+                    ("in", "superuser@cern.ch"),
+                ]
+            },
+        },
+        # 1: {
+        #     "subject": [
+        #         ("in", "Questionnaire for {cadi_id} {published_id}"),
+        #         ("in", "New Published Analysis"),
+        #     ],
+        #     "body": [
+        #         ("in", "ancode={cadi_id}"),
+        #         ("in", "Admin Rev 1 (primary)"),
+        #         ("in", "Admin Rev 2 (secondary)"),
+        #     ],
+        #     "recipients": {
+        #         "bcc": [
+        #             ("in", "hn-cms-ABC-11-111@cern0.ch")
+        #         ]
+        #     },
+        # },
+    },
+}
+
+WRONG_BASE_TEMPLATE_CONFIG = {
+    "notifications": {
+        "actions": {
+            "publish": [
+                {
+                    "body": {
+                        "template_file": "mail/body/experiments/cms/questionnaire_message_published_plain.html",
+                        "ctx": [
+                            {"name": "cadi_id", "path": "analysis_context.cadi_id"},
+                            {"name": "title", "path": "general_title"},
+                            {"method": "published_url"},
+                            {"method": "submitter_email"},
+                        ],
+                        "base_template": "mail/wrong_template.html",
+                        "plain": True,
+                    },
+                    "recipients": {
+                        "recipients": [ "test-recipient@cern0.ch" ]
+                    },
+                },
+                {
+                    "subject": {
+                        "template_file": "mail/subject/questionnaire_subject_published.html",
+                        "ctx": [
+                            {"name": "cadi_id", "path": "analysis_context.cadi_id"},
+                            {"method": "revision"},
+                            {"method": "published_id"},
+                        ],
+                    },
+                    "body": {
+                        "template_file": "mail/body/experiments/cms/questionnaire_message_published.html",
+                        "ctx": [
+                            {"name": "cadi_id", "path": "analysis_context.cadi_id"},
+                            {"name": "title", "path": "general_title"},
+                            {"method": "published_url"},
+                            {"method": "submitter_email"},
+                        ],
+                    },
+                    "recipients": {
+                        "recipients": [
+                            {"method": "get_owner"},
+                            {"method": "get_submitter"},
+                        ],
+                        "bcc": [
+                            {"method": "get_cms_stat_recipients"},
+                            {
+                                "op": "and",
+                                "checks": [
+                                    {"path": "ml_app_use", "condition": "exists"}
+                                ],
+                                "mails": {
+                                    "default": [
+                                        "ml-conveners-test@cern0.ch",
+                                        "ml-conveners-jira-test@cern0.ch",
+                                    ]
+                                },
+                            },
+                        ],
+                    },
+                },
+            ]
+        }
+    }
+}
+
+WRONG_BASE_TEMPLATE_CONFIG_ASSERTIONS = {
+    "ctx": {
+        "cadi_id": {"type": "deposit", "path": "analysis_context.cadi_id"},
+        "published_id": {"type": "response", "path": "recid"},
+    },
+    "response": 202,
+    "outbox_length": 1,
+    "outbox": {
+        0: {
+            "recipients": {
+                "recipients": [
+                    ("in", "cms_user@cern.ch"),
+                    ("in", "superuser@cern.ch"),
+                ],
+                "bcc": [
+                    ("in", "ml-conveners-test@cern0.ch"),
+                    ("in", "ml-conveners-jira-test@cern0.ch"),
+                ]
+            },
         }
     }
 }

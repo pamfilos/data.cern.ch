@@ -44,7 +44,8 @@ from cap.modules.records.api import CAPRecord
 from cap.modules.schemas.models import Schema
 from cap.modules.schemas.resolvers import resolve_schema_by_url,\
     resolve_schema_by_name_and_version, schema_name_to_url
-from cap.modules.schemas.utils import is_later_version, validate_schema_config
+from cap.modules.schemas.helpers import ValidationError
+from cap.modules.schemas.utils import is_later_version
 
 DEPOSIT_REQUIRED_FIELDS = [
     '_buckets',
@@ -296,16 +297,6 @@ def add_schema_from_json(data, replace=None, force_version=None):
     allow_all = data.pop("allow_all", False)
     version = data['version']
     name = data['name']
-    config = data.get('config')
-
-    if config:
-        errors = validate_schema_config(config)
-        if errors:
-            click.secho(errors, fg='red')
-            click.secho(
-                f'Configuration is invalid. '
-                f'Aborting update for schema {name}.', fg='red')
-            return
 
     try:
         with db.session.begin_nested():
@@ -340,6 +331,12 @@ def add_schema_from_json(data, replace=None, force_version=None):
 
         db.session.commit()
         click.secho(f'{name} has been added.', fg='green')
+    except ValidationError as err:
+        click.secho(err, fg='red')
+        click.secho(
+            f'Configuration is invalid. '
+            f'Aborting update for schema {name}.', fg='red')
+        return
     except IntegrityError:
         click.secho(f'An db error occurred while adding {name}.', fg='red')
 

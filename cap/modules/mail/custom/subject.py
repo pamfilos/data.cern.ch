@@ -25,15 +25,15 @@
 
 def published_id(record, **kwargs):
     try:
-        return record['_deposit']['pid']['value']
-    except KeyError:
+        return record.get('_deposit', {}).get('pid', {}).get('value')
+    except:
         return None
 
 
 def draft_id(record, **kwargs):
     try:
-        return record['_deposit']['id']
-    except KeyError:
+        return record.get('_deposit', {}).get('id')
+    except:
         return None
 
 

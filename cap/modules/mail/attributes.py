@@ -81,6 +81,7 @@ def check_condition(record, condition, default_ctx={}):
                 method = CONDITION_METHODS[check["condition"]]
                 path = check.get("path")
                 value = check.get("value", True)
+                # TODO: maybe update with kwargs
                 check_results.append(
                     method(record, path, value, default_ctx=default_ctx)
                 )
@@ -237,30 +238,16 @@ def generate_body(record, config, default_ctx={}):
     """
     body_config = config.get("body", {})
 
-    # first get the body information
-    # func = body_config.get('method')
-    # if func:
-    #     try:
-    #         custom_message_func = getattr(custom_body, func)
-    #         body = custom_message_func(record, config)
-    #     except AttributeError as exc:
-    #         current_app.logger.error(
-    #             f'Body function not found. Providing default body.\n'
-    #             f'Error: {exc.args[0]}')
-    #         body = None
-    # else:
     body = populate_template_from_ctx(record, body_config, module=custom_body,
                                       type="body", default_ctx=default_ctx)
 
-    base = "mail/base_plain.html"
+    base = "mail/base.html"
 
     if body_config.get("plain"):
         base = "mail/base_plain.html"
 
     if body_config.get("base_template"):
         base = body_config.get("base_template")
-        # # then we get the template info if available
-        # base = body_config.get('base_template', get_config_default(action, 'body'))  # noqa
 
     return body, base
 

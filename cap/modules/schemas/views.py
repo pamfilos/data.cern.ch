@@ -43,19 +43,15 @@ from cap.modules.access.utils import login_required
 from .models import Schema
 from .permissions import AdminSchemaPermission, ReadSchemaPermission
 
-from .serializers import (
-    create_config_payload,
-    link_serializer,
-    schema_serializer,
-    update_schema_serializer
-)
+from .serializers import (schema_payload_serializer,link_serializer,
+                          update_payload_schema_serializer)
 from .utils import (
     check_allowed_patch_operation,
     check_allowed_patch_path,
-    get_indexed_schemas_for_user,
     get_schemas_for_user,
     validate_schema_config
 )
+from .helpers import ValidationError
 
 blueprint = Blueprint(
     'cap_schemas',
@@ -128,8 +124,7 @@ class SchemaAPI(MethodView):
         """Create new schema."""
         data = request.get_json()
 
-        self._validate_config(data)
-        serialized_data, errors = schema_serializer.load(data)
+        serialized_data, errors = schema_payload_serializer.load(data)
 
         if errors:
             raise abort(400, errors)
@@ -145,6 +140,11 @@ class SchemaAPI(MethodView):
 
         except IntegrityError:
             raise abort(400, 'Error occured during saving schema in the db.')
+        except ValidationError as err:
+            return jsonify({
+                "message": err.description,
+                "errors": err.errors
+            }), 400
 
         return jsonify(schema.config_serialize())
 
@@ -160,15 +160,20 @@ class SchemaAPI(MethodView):
             data = request.get_json()
 
             self._validate_config(data)
-            serialized_data, errors = update_schema_serializer.load(
-                data, partial=True
-            )
+            serialized_data, errors = update_payload_schema_serializer.load(
+                data, partial=True)
 
             if errors:
                 raise abort(400, errors)
 
-            schema.update(**serialized_data)
-            db.session.commit()
+            try:
+                schema.update(**serialized_data)
+                db.session.commit()
+            except ValidationError as err:
+                return jsonify({
+                    "message": err.description,
+                    "errors": err.errors
+                }), 400
 
             return jsonify(schema.config_serialize())
 
@@ -229,7 +234,7 @@ class SchemaAPI(MethodView):
                     400,
                 )
 
-            serialized_data, errors = update_schema_serializer.load(
+            serialized_data, errors = update_payload_schema_serializer.load(
                 patched_schema, partial=True
             )
             if errors:

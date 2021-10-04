@@ -54,6 +54,7 @@ from .serializers import (
     resolved_schemas_serializer,
     schema_serializer,
 )
+from .helpers import validate_schema_config, ValidationError
 
 ES_FORBIDDEN = r' ,"\<*>|?'
 
@@ -215,7 +216,12 @@ class Schema(db.Model):
                 raise WrongJSONSchemaError(
                     "ERROR: Invalid 'config' object.", errors=errors
                 )
-        return value
+        # errors = validate_schema_config(value)
+        # if value and errors:
+        #     raise ValidationError(
+        #             errors=errors,
+        #             description="Schema configuration validation error")
+        # return value
 
     def serialize(self, resolve=False):
         """Serialize schema model."""

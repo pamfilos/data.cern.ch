@@ -1,13 +1,12 @@
-{% extends "mail/base.html" %}
+{% extends "mail/body/body_with_buttons.html" %}
 
-{% block paragraph %}
+{% block content %}
     {% if revision and revision > 0 %}
         <h4> An newer version of document <em>{{ published_id }}</em> has been published.</h4>
-        <p>You can check it <a href="{{ working_url }}">here</a>.</p>
     {% else %}
         <h4>A new document has been published, with id <em>{{ published_id }}</em>.</h4>
-        <p>You can check it <a href="{{ working_url }}">here</a>.</p>
     {% endif %}
+    <p>You can check it <a href="{{ working_url }}">here</a>.</p>
 
     {% if message %}
         <hr/>

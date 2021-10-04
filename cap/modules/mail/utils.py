@@ -23,11 +23,20 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 import re
 
-from flask import current_app, render_template, render_template_string, request
+from flask import current_app, request
 from jinja2.exceptions import TemplateNotFound, TemplateSyntaxError
+from jinja2 import Environment, PackageLoader, select_autoescape
 from werkzeug.exceptions import BadRequest
 
 from . import custom as custom_methods
+
+# Creating new environment and new loader for the Jinja templates, to avoid
+# injection with Flask context passed in render_template
+_template_loader = PackageLoader("cap.modules.mail", "templates")
+_mail_jinja_env = Environment(
+    loader=_template_loader,
+    autoescape=select_autoescape()
+)
 
 EMAIL_REGEX = re.compile(r"(?!.*\.\.)(^[^.][^@\s]+@[^@\s]+\.[^@\s.]+$)")
 
@@ -35,15 +44,15 @@ CONFIG_DEFAULTS = {
     "review": {
         "subject": "New Review on Analysis | CERN Analysis Preservation",
         "body": {
-            "plain": ("mail/analysis_review.html", None),
-            "html": ("mail/analysis_review.html", None),
+            "plain": ("mail/body/analysis_review.html", None),
+            "html": ("mail/body/analysis_review.html", None),
         },
     },
     "publish": {
         "subject": "New Published Analysis | CERN Analysis Preservation",
         "body": {
-            "plain": ("mail/analysis_published_plain.html", None),
-            "html": ("mail/analysis_published.html", None),
+            "plain": ("mail/body/analysis_published_plain.html", None),
+            "html": ("mail/body/analysis_published.html", None),
         },
     },
 }
@@ -52,9 +61,12 @@ CONFIG_DEFAULTS = {
 class UnsuccessfulMail(Exception):
     """Error during sending email."""
 
-    def __init__(self, data=None, **kwargs):
+    def __init__(self, **kwargs):
         """Initialize exception."""
-        super(UnsuccessfulMail, self).__init__(**kwargs)
+        super(UnsuccessfulMail, self).__init__()
+        self.rec_uuid = kwargs.get("rec_uuid", "")
+        self.msg = kwargs.get("msg", "")
+        self.params = kwargs.get("params", {})
 
 
 def get_config_default(action, type, plain=False):
@@ -117,8 +129,30 @@ def populate_template_from_ctx(record, config, module=None,
             f"Notification procedure aborted."
         )
         current_app.logger.error(msg)
-        raise UnsuccessfulMail()
+        raise UnsuccessfulMail(
+            rec_uuid=record.id, msg=msg, params={"config": config})
 
+    ctx = {**default_ctx}
+    gen_ctx = generate_ctx(config_ctx, record=record, default_ctx=default_ctx)
+    ctx = {**ctx, **gen_ctx}
+
+    try:
+        return render(template_to_render, **ctx)
+    except TemplateNotFound as ex:
+        msg = f"Template {ex.name} not found. Notification procedure aborted."
+        raise UnsuccessfulMail(
+            rec_uuid=record.id, msg=msg, params={"config": config})
+    except TemplateSyntaxError as ex:
+        msg = f"Template error: {ex.message}. Notification procedure aborted."
+        raise UnsuccessfulMail(
+            rec_uuid=record.id, msg=msg, params={"config": config})
+    except TypeError as ex:
+        msg = f"Context for template is empty. Notification procedure aborted."
+        raise UnsuccessfulMail(
+            rec_uuid=record.id, msg=msg, params={"config": config})
+
+
+def generate_ctx(config_ctx, record=None, default_ctx={}):
     ctx = {**default_ctx}
     for attrs in config_ctx:
         if attrs.get("path"):
@@ -133,21 +167,7 @@ def populate_template_from_ctx(record, config, module=None,
                 ctx.update({name: val})
             except AttributeError:
                 continue
-
-    try:
-        return render(template_to_render, **ctx)
-    except TemplateNotFound as ex:
-        msg = f"Template {ex.name} not found. Notification procedure aborted."
-        current_app.logger.error(msg)
-        raise UnsuccessfulMail()
-    except TemplateSyntaxError as ex:
-        msg = f"Template error: {ex.message}. Notification procedure aborted."
-        current_app.logger.error(msg)
-        raise UnsuccessfulMail()
-    except TypeError as ex:
-        msg = f"Context for template is empty. Notification procedure aborted."
-        current_app.logger.error(msg)
-        raise UnsuccessfulMail()
+    return ctx
 
 
 def update_mail_list(record, config, mails, default_ctx={}):
@@ -182,7 +202,6 @@ def update_mail_list(record, config, mails, default_ctx={}):
                 )
                 mails += [_formatted_email]
             except UnsuccessfulMail:
-                # TODO: maybe log error
                 continue
 
 
@@ -202,3 +221,36 @@ def is_review_request():
         return False
 
     return True
+
+
+def _render(template, context):
+    """Renders the template and fires the signal"""
+    rv = template.render(context)
+    return rv
+
+
+def render_template(template_name_or_list, **context):
+    """Renders a template from the template folder with the given
+    context.
+
+    :param template_name_or_list: the name of the template to be
+                                  rendered, or an iterable with template names
+                                  the first one existing will be rendered
+    :param context: the variables that should be available in the
+                    context of the template.
+    """
+    return _render(
+        _mail_jinja_env.get_or_select_template(template_name_or_list),
+        context)
+
+
+def render_template_string(source, **context):
+    """Renders a template from the given template source string
+    with the given context. Template variables will be autoescaped.
+
+    :param source: the source code of the template to be
+                   rendered
+    :param context: the variables that should be available in the
+                    context of the template.
+    """
+    return _render(_mail_jinja_env.from_string(source), context)

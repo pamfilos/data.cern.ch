@@ -59,8 +59,7 @@ def submitter_email(record, **kwargs):
     return submitter_user.email
 
 
-# TODO: error in cms-questionnaire config, reviewer should come from WG
-def reviewer_email(record, **kwargs):
+def creator_email(record, **kwargs):
     """Returns the owner of the analysis."""
     owner_list = record.get("_deposit", {}).get("owners")
     if owner_list:

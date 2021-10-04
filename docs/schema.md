@@ -156,7 +156,7 @@ The template can be omitted since there are defaults that can be used for each a
 Similar to the subject, we provide a template and a context for the message of tha notification, as follows:
 
     "message": {
-      "template_file": "mail/message/questionnaire_message_published.html",
+      "template_file": "mail/body/experiments/cms/questionnaire_message_published.html",
       "ctx": [{
         "name": "title",
         "path": "general_title"
@@ -249,13 +249,13 @@ if you need to make sure that a certain value does not appear in a list, then
 
 Here is a list of currently supported conditions:
 
-| name (if)      | expected value             |
-| -------------- |:--------------------------:|
-| equals         | a string                   |
-| exists         | None (default true)        |
-| is_in          | an iterable (list/string)  |
-| is_not_in      | an iterable (list/string   |
-| has_permission | a mail to be checked       |
+| name (if)        | expected value             |
+| --------------   |:--------------------------:|
+| equals           | a string                   |
+| exists           | None (default true)        |
+| is_in            | an iterable (list/string)  |
+| is_not_in        | an iterable (list/string   |
+| is_egroup_member | an egroup name       |
 
 The supported conditions and checks can be found in the `cap.modules.mail.conditions.py` file
 

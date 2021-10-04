@@ -4,7 +4,7 @@
   "additionalProperties":false,
   "properties": {
     "notifications": {
-      "$ref": "/cap/modules/schemas/configs/configs/notifications.json"
+      "$ref": "/cap/modules/schemas/configs/notifications.json"
     },
     "reviewable": {
       "$ref": "/cap/modules/schemas/configs/reviewable.json"

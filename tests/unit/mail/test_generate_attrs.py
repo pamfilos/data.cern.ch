@@ -27,6 +27,15 @@ from cap.modules.mail.attributes import generate_recipients, generate_body, \
     generate_subject
 
 
+def _generate_schema_config(notification_config):
+    return {
+        "notifications": {
+            "actions": {
+                "publish": notification_config
+            }
+        }
+    }
+  
 # @patch('cap.modules.mail.custom.recipients.current_user')
 def test_generate_recipients(app, users, location, create_schema, create_deposit):
     user = users['cms_user']
@@ -57,7 +66,9 @@ def test_generate_recipients(app, users, location, create_schema, create_deposit
             ]
         }
     }
-    create_schema('test', experiment='CMS', config=config)
+
+    _config = _generate_schema_config([config])
+    create_schema('test', experiment='CMS', config=_config)
     deposit = create_deposit(user, 'test',
                              {
                                  '$ana_type': 'test',
@@ -81,7 +92,7 @@ def test_generate_body(app, users, location, create_schema, create_deposit):
 
     config = {
         "body": {
-            "template_file": "mail/body/questionnaire_message_published.html",
+            "template_file": "mail/body/experiments/cms/questionnaire_message_published.html",
             "ctx": [{
                 "name": "cadi_id",
                 "path": "analysis_context.cadi_id"
@@ -93,9 +104,13 @@ def test_generate_body(app, users, location, create_schema, create_deposit):
             }, {
                 "method": "submitter_email"
             }]
+        },
+        "recipients": {
+            "recipients": ["test-mail@cern0.ch"]
         }
     }
-    create_schema('test', experiment='CMS', config=config)
+    _config = _generate_schema_config([config])
+    create_schema('test', experiment='CMS', config=_config)
     deposit = create_deposit(user, 'test',
                              {
                                  '$ana_type': 'test',
@@ -130,9 +145,13 @@ def test_generate_subject(app, users, location, create_schema, create_deposit):
             }, {
                 "method": "published_id"
             }]
+        },
+        "recipients": {
+            "recipients": ["test-mail@cern0.ch"]
         }
     }
-    create_schema('test', experiment='CMS', config=config)
+    _config = _generate_schema_config([config])
+    create_schema('test', experiment='CMS', config=_config)
     deposit = create_deposit(user, 'test',
                              {
                                  '$ana_type': 'test',
@@ -172,7 +191,6 @@ def test_generate_recipients_with_nested_conditions(app, users, location, create
                     {
                         "path": "ml_app_use",
                         "condition": "exists",
-                        "value": True,
                     },
                     {
                         # 1st nested: should return true, 1 of them is false and we have or
@@ -183,8 +201,7 @@ def test_generate_recipients_with_nested_conditions(app, users, location, create
                             "value": 'yes',
                         }, {
                             "path": "some_field",
-                            "condition": "exists",
-                            "value": True,
+                            "condition": "exists"
                         }, {
                             # 2nd nested
                             "op": "and",
@@ -202,7 +219,8 @@ def test_generate_recipients_with_nested_conditions(app, users, location, create
             }]
         }
     }
-    create_schema('test', experiment='CMS', config=config)
+    _config = _generate_schema_config([config])
+    create_schema('test', experiment='CMS', config=_config)
     deposit = create_deposit(user, 'test',
                              {
                                  '$ana_type': 'test',

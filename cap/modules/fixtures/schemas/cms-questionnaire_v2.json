@@ -22,7 +22,7 @@
               }]
             },
             "body": {
-              "template_file": "mail/body/questionnaire_message_published.html",
+              "template_file": "mail/body/experiments/cms/questionnaire_message_published.html",
               "ctx": [{
                 "name": "cadi_id",
                 "path": "analysis_context.cadi_id"
@@ -98,7 +98,7 @@
               }]
             },
             "body": {
-              "template_file": "mail/body/questionnaire_message_published_plain.html",
+              "template_file": "mail/body/experiments/cms/questionnaire_message_published_plain.html",
               "ctx": [{
                 "name": "cadi_id",
                 "path": "analysis_context.cadi_id"
@@ -145,7 +145,7 @@
               }]
             },
             "body": {
-              "template_file": "mail/body/questionnaire_message_published.html",
+              "template_file": "mail/body/experiments/cms/questionnaire_message_published.html",
               "ctx": [{
                 "name": "cadi_id",
                 "path": "analysis_context.cadi_id"
@@ -208,7 +208,7 @@
               }]
             },
             "body": {
-              "template_file": "mail/body/questionnaire_message_review.html",
+              "template_file": "mail/body/experiments/cms/questionnaire_message_review.html",
               "ctx": [{
                 "name": "cadi_id",
                 "path": "analysis_context.cadi_id"
@@ -218,7 +218,7 @@
               },{
                 "method": "working_url"
               }, {
-                "method": "reviewer_email"
+                "method": "creator_email"
               }, {
                 "method": "submitter_email"
               }]
@@ -239,7 +239,7 @@
               }]
             },
             "body": {
-              "template_file": "mail/body/questionnaire_message_review_plain.html",
+              "template_file": "mail/body/experiments/cms/questionnaire_message_review_plain.html",
               "ctx": [{
                 "name": "cadi_id",
                 "path": "analysis_context.cadi_id"
@@ -249,7 +249,7 @@
               },{
                 "method": "working_url"
               }, {
-                "method": "reviewer_email"
+                "method": "creator_email"
               }, {
                 "method": "submitter_email"
               }],
@@ -264,8 +264,8 @@
                     "condition": "exists"
                   }, {
                     "path": "parton_distribution_functions",
-                    "condition": "has_permission",
-                    "value": "comittee-mail@cern0.ch"
+                    "condition": "is_egroup_member",
+                    "value": "comittee-mail"
                   }],
                   "mails": {
                     "formatted": [{

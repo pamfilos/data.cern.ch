@@ -48,7 +48,7 @@ def test_send_mail_published(app, users, create_deposit, create_schema, client, 
                         }]
                     },
                     "body": {
-                        "template_file": "mail/body/questionnaire_message_published_plain.html",
+                        "template_file": "mail/body/experiments/cms/questionnaire_message_published_plain.html",
                         "ctx": [{
                             "name": "cadi_id",
                             "path": "analysis_context.cadi_id"
@@ -60,7 +60,6 @@ def test_send_mail_published(app, users, create_deposit, create_schema, client, 
                         }, {
                             "method": "submitter_email"
                         }],
-                        "base_template": "mail/analysis_plain_text.html",
                         "plain": True
                     },
                     "recipients": {
@@ -97,7 +96,7 @@ def test_send_mail_published(app, users, create_deposit, create_schema, client, 
                         }]
                     },
                     "body": {
-                        "template_file": "mail/body/questionnaire_message_published.html",
+                        "template_file": "mail/body/experiments/cms/questionnaire_message_published.html",
                         "ctx": [{
                             "name": "cadi_id",
                             "path": "analysis_context.cadi_id"

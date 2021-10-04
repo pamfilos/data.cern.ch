@@ -25,14 +25,19 @@
 
 import json
 from pytest import raises, mark
+from mock import patch
 
 from invenio_deposit.signals import post_action
+from cap.modules.schemas.helpers import ValidationError
+
 from data.mail_configs import (
     EMPTY_CONFIG, EMPTY_CONFIG_ASSERTIONS,
     DEFAULT_CONFIG, DEFAULT_CONFIG_ASSERTIONS,
     DEFAULT_CONFIG_PLAIN, DEFAULT_CONFIG_PLAIN_ASSERTIONS,
     DEFAULT_CONFIG_WITH_ERRORS, DEFAULT_CONFIG_WITH_ERRORS_ASSERTIONS,
     SIMPLE_CONFIG, SIMPLE_CONFIG_ASSERTIONS,
+    SIMPLE_GLOBAL_CTX_CONFIG, SIMPLE_GLOBAL_CTX_CONFIG_ASSERTIONS,
+    SIMPLE_GLOBAL_CTX_2_CONFIG, SIMPLE_GLOBAL_CTX_2_CONFIG_ASSERTIONS,
     WRONG_TEMPLATE_FILE_CONFIG, WRONG_TEMPLATE_FILE_CONFIG_ASSERTIONS, 
     NESTED_CONDITION_WITH_ERRORS_CONFIG, NESTED_CONDITION_WITH_ERRORS_CONFIG_ASSERTIONS,
     CTX_EXAMPLES_CONFIG, CTX_EXAMPLES_CONFIG_ASSERTIONS,
@@ -42,7 +47,10 @@ from data.mail_configs import (
     METHOD_AND_WRONG_CONDITION_RECIPIENTS_CONFIG, METHOD_AND_WRONG_CONDITION_RECIPIENTS_CONFIG_ASSERTIONS,
     MUTLIPLE_PUBLISH_CONFIG, MUTLIPLE_PUBLISH_CONFIG_ASSERTIONS,
     NESTED_CONDITIONS_CONFIG, NESTED_CONDITIONS_CONFIG_ASSERTIONS,
-    WRONG_TEMPLATE_CONFIG, WRONG_TEMPLATE_CONFIG_ASSERTIONS
+    WRONG_TEMPLATE_CONFIG, WRONG_TEMPLATE_CONFIG_ASSERTIONS,
+    HAS_PERMISSION_CONFIG, HAS_PERMISSION_CONFIG_ASSERTIONS,
+    CMS_STATS_QUESTIONNAIRE, CMS_STATS_QUESTIONNAIRE_ASSERTIONS,
+    WRONG_BASE_TEMPLATE_CONFIG, WRONG_BASE_TEMPLATE_CONFIG_ASSERTIONS
 )
 from cap.modules.mail.utils import path_value_equals
 
@@ -52,6 +60,8 @@ from cap.modules.mail.utils import path_value_equals
     (DEFAULT_CONFIG_PLAIN, DEFAULT_CONFIG_PLAIN_ASSERTIONS),
     (DEFAULT_CONFIG_WITH_ERRORS, DEFAULT_CONFIG_WITH_ERRORS_ASSERTIONS),
     (SIMPLE_CONFIG, SIMPLE_CONFIG_ASSERTIONS),
+    (SIMPLE_GLOBAL_CTX_CONFIG, SIMPLE_GLOBAL_CTX_CONFIG_ASSERTIONS),
+    (SIMPLE_GLOBAL_CTX_2_CONFIG, SIMPLE_GLOBAL_CTX_2_CONFIG_ASSERTIONS),
     (WRONG_TEMPLATE_FILE_CONFIG, WRONG_TEMPLATE_FILE_CONFIG_ASSERTIONS),
     (NESTED_CONDITION_WITH_ERRORS_CONFIG, NESTED_CONDITION_WITH_ERRORS_CONFIG_ASSERTIONS),
     (CTX_EXAMPLES_CONFIG, CTX_EXAMPLES_CONFIG_ASSERTIONS),
@@ -61,102 +71,115 @@ from cap.modules.mail.utils import path_value_equals
     (WRONG_CONDITION_RECIPIENTS_CONFIG, WRONG_CONDITION_RECIPIENTS_CONFIG_ASSERTIONS),
     (METHOD_AND_WRONG_CONDITION_RECIPIENTS_CONFIG, METHOD_AND_WRONG_CONDITION_RECIPIENTS_CONFIG_ASSERTIONS),
     (MUTLIPLE_PUBLISH_CONFIG, MUTLIPLE_PUBLISH_CONFIG_ASSERTIONS),
-    (NESTED_CONDITIONS_CONFIG, NESTED_CONDITIONS_CONFIG_ASSERTIONS)
+    (NESTED_CONDITIONS_CONFIG, NESTED_CONDITIONS_CONFIG_ASSERTIONS),
+    (HAS_PERMISSION_CONFIG, HAS_PERMISSION_CONFIG_ASSERTIONS),
+    (CMS_STATS_QUESTIONNAIRE, CMS_STATS_QUESTIONNAIRE_ASSERTIONS),
+    (WRONG_BASE_TEMPLATE_CONFIG, WRONG_BASE_TEMPLATE_CONFIG_ASSERTIONS)
 ])
+@patch('cap.modules.mail.conditions.get_cern_extra_data_egroups', lambda x: ['cms-access'])
 def test_post_action_mail(app, users, create_deposit, create_schema, client, auth_headers_for_user, config, expected):
-    create_schema('cms-stats-questionnaire', experiment='CMS', version="0.0.1", config=config)
-    creator = users['cms_user']
-    user = users['superuser']
+    if expected.get("validationError"):
+        with raises(ValidationError):
+            create_schema('cms-stats-questionnaire', experiment='CMS', version="0.0.1", config=config)
+            return
+    else:
+        create_schema('cms-stats-questionnaire', experiment='CMS', version="0.0.1", config=config)
 
-    with app.app_context():
-        with app.extensions['mail'].record_messages() as outbox:
-            deposit = create_deposit(
-                creator,
-                'cms-stats-questionnaire',
-                {
-                    '$schema': 'https://analysispreservation.cern.ch/schemas/'
-                               'deposits/records/cms-stats-questionnaire-v0.0.1.json',
-                    'general_title': 'test analysis',
-                    'analysis_context': {
-                        'cadi_id': 'ABC-11-111',
-                        'wg': 'ABC'
-                    },
-                    'parton_distribution_functions': {
-                        'test': "exists"
-                    },
-                    'ml_app_use': ['not empty'],
-                    'multivariate_discriminants': {
-                        'use_of_centralized_cms_apps': {
-                            'options': "Yes"
+        creator = users['cms_user']
+        user = users['superuser']
+
+        with app.app_context():
+            with app.extensions['mail'].record_messages() as outbox:
+                deposit = create_deposit(
+                    creator,
+                    'cms-stats-questionnaire',
+                    {
+                        '$schema': 'https://analysispreservation.cern.ch/schemas/'
+                                'deposits/records/cms-stats-questionnaire-v0.0.1.json',
+                        'general_title': 'test analysis',
+                        'analysis_context': {
+                            'cadi_id': 'ABC-11-111',
+                            'wg': 'ABC'
+                        },
+                        'parton_distribution_functions': {
+                            'test': "exists"
+                        },
+                        'ml_app_use': ['not empty'],
+                        'multivariate_discriminants': {
+                            'use_of_centralized_cms_apps': {
+                                'options': "Yes"
+                            }
                         }
-                    }
-                },
-                experiment='CMS'
-            )
+                    },
+                    experiment='CMS'
+                )
 
-            resp = client.post(
-                f"/deposits/{deposit['_deposit']['id']}/actions/publish",
-                headers=auth_headers_for_user(user)
-            )
+                resp = client.post(
+                    f"/deposits/{deposit['_deposit']['id']}/actions/publish",
+                    headers=auth_headers_for_user(user)
+                )
 
-            if expected.get("response"):
-                assert resp.status_code == expected.get("response")
-            pid = resp.json['recid']
+                if expected.get("response"):
+                    assert resp.status_code == expected.get("response")
+                pid = resp.json['recid']
 
-            ctx = {}
-            for ctx_key, ctx_item in expected.get("ctx", {}).items():
-                ctx_type = ctx_item.get("type") 
-                if ctx_type == "response":
-                    ctx[ctx_key] = _path_value_equals(ctx_item['path'], resp.json)
-                elif ctx_type == "deposit":
-                    ctx[ctx_key] = path_value_equals(ctx_item['path'], deposit)
+                ctx = {}
+                for ctx_key, ctx_item in expected.get("ctx", {}).items():
+                    ctx_type = ctx_item.get("type") 
+                    if ctx_type == "response":
+                        ctx[ctx_key] = _path_value_equals(ctx_item['path'], resp.json)
+                    elif ctx_type == "deposit":
+                        ctx[ctx_key] = path_value_equals(ctx_item['path'], deposit)
 
-            if not expected.get("outbox"):
-                assert len(outbox) == 0
+                if not expected.get("outbox"):
+                    assert len(outbox) == 0
 
-            for outbox_key, outbox_assert in expected.get("outbox", {}).items():
-                _outbox = outbox[outbox_key]    
+                if expected.get("outbox_length"):
+                    assert len(outbox) == expected.get("outbox_length")
 
-                for _assertion in outbox_assert.get("subject", []):
-                    if _assertion[0] is "in":
-                        assert _assertion[1].format(**ctx) in _outbox.subject
-                    elif _assertion[0] is "equals":
-                        assert _assertion[1].format(**ctx) == _outbox.subject
+                for outbox_key, outbox_assert in expected.get("outbox", {}).items():
+                    _outbox = outbox[outbox_key]    
 
-                for _assertion in outbox_assert.get("body", []):
-                    assert _outbox.body
-                    if _assertion[0] is "in":
-                        assert _assertion[1].format(**ctx) in _outbox.body
-                    elif _assertion[0] is "equals":
-                        assert _assertion[1].format(**ctx) == _outbox.body
+                    for _assertion in outbox_assert.get("subject", []):
+                        if _assertion[0] is "in":
+                            assert _assertion[1].format(**ctx) in _outbox.subject
+                        elif _assertion[0] is "equals":
+                            assert _assertion[1].format(**ctx) == _outbox.subject
 
-                for _assertion in outbox_assert.get("html", []):
-                    assert _outbox.html
+                    for _assertion in outbox_assert.get("body", []):
+                        assert _outbox.body
+                        if _assertion[0] is "in":
+                            assert _assertion[1].format(**ctx) in _outbox.body
+                        elif _assertion[0] is "equals":
+                            assert _assertion[1].format(**ctx) == _outbox.body
 
-                    if _assertion[0] is "in":
-                        assert _assertion[1].format(**ctx) in _outbox.html
-                    elif _assertion[0] is "equals":
-                        assert _assertion[1].format(**ctx) == _outbox.html
-                    elif _assertion[0] is "pid":
-                        if _assertion[1] is "in":
-                            assert _assertion[2].format(pid=pid) in _outbox.html
-                        elif _assertion[1] is "equals":
-                            assert _assertion[2].format(pid=pid) == _outbox.html
-
-                for rec_type in ["recipients", "bcc", "cc"]:
-                    for _assertion in outbox_assert.get("recipients", {}).get(rec_type, []):
-                        _list = []
-                        if rec_type is "recipients":
-                            _list = _outbox.recipients
-                        elif rec_type is "bcc":
-                            _list = _outbox.bcc
-                        elif rec_type is "cc":
-                            _list = _outbox.cc
+                    for _assertion in outbox_assert.get("html", []):
+                        assert _outbox.html
 
                         if _assertion[0] is "in":
-                            assert _assertion[1] in _list
-                        elif _assertion[0] is "notin":
-                            assert _assertion[1] not in _list
+                            assert _assertion[1].format(**ctx) in _outbox.html
+                        elif _assertion[0] is "equals":
+                            assert _assertion[1].format(**ctx) == _outbox.html
+                        elif _assertion[0] is "pid":
+                            if _assertion[1] is "in":
+                                assert _assertion[2].format(pid=pid) in _outbox.html
+                            elif _assertion[1] is "equals":
+                                assert _assertion[2].format(pid=pid) == _outbox.html
+
+                    for rec_type in ["recipients", "bcc", "cc"]:
+                        for _assertion in outbox_assert.get("recipients", {}).get(rec_type, []):
+                            _list = []
+                            if rec_type is "recipients":
+                                _list = _outbox.recipients
+                            elif rec_type is "bcc":
+                                _list = _outbox.bcc
+                            elif rec_type is "cc":
+                                _list = _outbox.cc
+
+                            if _assertion[0] is "in":
+                                assert _assertion[1] in _list
+                            elif _assertion[0] is "notin":
+                                assert _assertion[1] not in _list
 
 def _path_value_equals(path, record):
     """Given a string path, retrieve the JSON item."""

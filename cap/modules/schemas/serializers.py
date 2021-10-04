@@ -63,6 +63,8 @@ class SchemaSerializer(Schema):
     record_options = fields.Dict()
     record_mapping = fields.Dict()
 
+
+class SchemaResponseSerializer(SchemaSerializer):
     links = fields.Method('build_links', dump_only=True)
 
     @pre_load
@@ -104,7 +106,6 @@ class SchemaSerializer(Schema):
 
 class PatchedSchemaSerializer(Schema):
     """Schema serializer for patching jsonschemas."""
-
     fullname = fields.Str()
     use_deposit_as_record = fields.Boolean(default=False)
     config = fields.Dict()
@@ -115,8 +116,22 @@ class PatchedSchemaSerializer(Schema):
     record_options = fields.Dict()
     record_mapping = fields.Dict()
 
+class SchemaPayloadSerializer(SchemaSerializer):
+    """Schema serializer with resolved jsonschemas."""
+    config = fields.Dict()
 
-class ResolvedSchemaSerializer(SchemaSerializer):
+
+class UpdateSchemaPayloadSerializer(SchemaPayloadSerializer):
+    """Schema serializer with resolved jsonschemas."""
+    @pre_load
+    def filter_out_fields_that_cannot_be_updated(self, data, **kwargs):
+        """Remove non editable fields from serialized data."""
+        data = {k: v for k, v in iteritems(data) if k in EDITABLE_FIELDS}
+        if not data:
+            raise ValidationError('Empty data')
+        return data
+
+class ResolvedSchemaResponseSerializer(SchemaResponseSerializer):
     """Schema serializer with resolved jsonschemas."""
 
     deposit_schema = fields.Method(
@@ -138,8 +153,7 @@ class ResolvedSchemaSerializer(SchemaSerializer):
         )
         return copy.deepcopy(schema)  # so all the JSONRefs get resoved
 
-
-class ConfigResolvedSchemaSerializer(ResolvedSchemaSerializer):
+class ConfigResolvedSchemaSerializer(ResolvedSchemaResponseSerializer):
     config = fields.Dict()
     experiment = fields.Str(required=False)
 
@@ -214,11 +228,15 @@ class LinkSerializer(Schema):
         return links
 
 
-schema_serializer = SchemaSerializer()
+
+schema_serializer = SchemaResponseSerializer()
+resolved_schemas_serializer = ResolvedSchemaResponseSerializer()
 patched_schema_serializer = PatchedSchemaSerializer()
 update_schema_serializer = UpdateSchemaSerializer()
-resolved_schemas_serializer = ResolvedSchemaSerializer()
+resolved_schemas_serializer = ResolvedSchemaResponseSerializer()
 config_resolved_schemas_serializer = ConfigResolvedSchemaSerializer()
 create_config_payload = CreateConfigPayload()
 collection_serializer = CollectionSerializer()
 link_serializer = LinkSerializer()
+schema_payload_serializer = SchemaPayloadSerializer()
+update_payload_schema_serializer = UpdateSchemaPayloadSerializer()

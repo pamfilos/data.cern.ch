@@ -22,8 +22,10 @@
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
+from flask import current_app
 from flask_principal import RoleNeed
 from invenio_access.permissions import Permission
+from invenio_oauthclient.models import RemoteAccount
 
 from .utils import path_value_equals
 
@@ -53,9 +55,11 @@ def is_not_in(record, path, value, **kwargs):
     return True if data and value not in data else False
 
 
-def has_permission(record, path, value, **kwargs):
-    return Permission(RoleNeed(value)).can()
+def is_egroup_member(record, path, value, **kwargs):
+    submitter_id = kwargs.get('default_ctx', {}).get('submitter_id')
+    groups = get_cern_extra_data_egroups(submitter_id)
 
+    return True if value in groups else False
 
 CONDITION_METHODS = {
     # path/metadata conditions
@@ -66,5 +70,19 @@ CONDITION_METHODS = {
     'is_not_in': is_not_in,
 
     # mail/permission conditions
-    'has_permission': has_permission
+    'is_egroup_member': is_egroup_member
 }
+
+
+def get_cern_extra_data_egroups(user_id):
+    client_id = current_app.config['CERN_APP_CREDENTIALS']['consumer_key']
+    account = RemoteAccount.get(
+        user_id=user_id,
+        client_id=client_id,
+    )
+    groups = []
+
+    if account:
+        groups = account.extra_data.get('groups', [])
+
+    return groups

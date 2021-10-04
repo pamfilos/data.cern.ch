@@ -7,42 +7,35 @@
       "title": "Context (ctx) Options",
       "uniqueItems": true,
       "items": {
-        "type":"object",
-        "title": "Option",
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": ["path", "method"],
-            "title": "Context variable type"
-          }
-        },
-        "dependencies": {
-          "type": {
-            "oneOf": [{
-              "properties": {
-                "type": {"enum": ["path"]},
-                "name": {
-                  "type": "string",
-                  "title": "Variable name"
-                },
-                "path": {
-                  "type": "string",
-                  "title": "Variable Path"
-                }
+        "anyOf": [
+          {
+            "properties": {
+              "name": {
+                "type": "string",
+                "title": "Variable name"
               },
-              "required": ["type", "name", "path"]
-            }, {
-              "properties": {
-                "type": {"enum": ["method"]},
-                "method": {
-                  "type": "string",
-                  "title": "Variable Method"
-                }
-              },
-              "required": ["type", "method"]
-            }]
+              "path": {
+                "type": "string",
+                "title": "Variable Path"
+              }
+            },
+            "required": [
+              "name",
+              "path"
+            ]
+          },
+          {
+            "properties": {
+              "method": {
+                "type": "string",
+                "title": "Variable Method"
+              }
+            },
+            "required": [
+              "method"
+            ]
           }
-        }
+        ]
       }
     },
     "mails": {
@@ -54,7 +47,7 @@
           "title": "Default",
           "uniqueItems": true,
           "items": {
-            "type":"string",
+            "type": "string",
             "title": "Mail"
           }
         },
@@ -63,7 +56,7 @@
           "title": "Formatted",
           "uniqueItems": true,
           "items": {
-            "type":"object",
+            "type": "object",
             "title": "Mail",
             "properties": {
               "template": {
@@ -79,487 +72,206 @@
       }
     },
     "checks": {
-      "type": "array",
       "title": "Checks",
-      "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "type": "string",
+          "title": "AND/OR"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/checks" },
+              { "$ref": "#/definitions/condition" }
+            ]
+          }
+        }
+      }
+    },
+    "condition": {
         "type": "object",
         "title": "Add Check",
+        "additionalProperties": false,
         "properties": {
           "path": {
             "type": "string",
             "title": "Path"
           },
-          "if": {
+          "condition": {
             "type": "string",
             "title": "Condition"
           },
           "value": {
             "type": "string",
             "title": "Value"
+          },
+          "params": {
+            "type": "object"
           }
-        }
-      }
-    },
-    "template_type": {
-      "oneOf": [{
-        "properties": {
-          "template_type": {"enum": ["string"]},
-          "template": {
-            "type": "string",
-            "title": "Template string"
-          }
-        }
-      },{
-        "properties": {
-          "template_type": {"enum": ["path"]},
-          "template_file": {
-            "type": "string",
-            "title": "Template path"
-          }
-        }
-      }]
-    }
+
+        
+    }}
   },
+  "additionalProperties": false,
   "properties": {
     "actions": {
       "type": "object",
       "title": "Notification Actions",
-      "properties": {
-        "publish": {
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(publish|review)$": {
           "type": "array",
           "title": "Publish Options",
           "items": {
             "type": "object",
             "title": "Mail Config/Options",
+            "required": ["recipients"],
             "properties": {
+              "ctx": { "$ref": "#/definitions/ctx" },
               "subject": {
-                "type": "object",
-                "title": "Mail Subject",
-                "properties": {
-                  "template_type": {
-                    "type": "string",
-                    "enum": ["string", "path"],
-                    "title": "Template type (string/path)"
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "title": "Mail Subject",
+                    "additionalProperties": false,
+                    "properties": {
+                      "template": {
+                        "type": "string",
+                        "title": "Template string (Jinja format)"
+                      },
+                      "ctx": {
+                        "$ref": "#/definitions/ctx"
+                      },
+                      "method": {
+                        "type": "string",
+                        "title": "Method name"
+                      }
+                    }
                   },
-                  "ctx": {
-                    "$ref": "#/definitions/ctx"
+                  {
+                    "type": "object",
+                    "title": "Mail Subject",
+                    "additionalProperties": false,
+                    "properties": {
+                      "template_file": {
+                        "type": "string",
+                        "title": "Template file (path)"
+                      },
+                      "ctx": {
+                        "$ref": "#/definitions/ctx"
+                      },
+                      "method": {
+                        "type": "string",
+                        "title": "Method name"
+                      }
+                    }
                   }
-                },
-                "dependencies": {
-                  "template_type": {
-                    "$ref": "#/definitions/template_type"
-                  }
-                }
+                ]
               },
-              "message": {
-                "type": "object",
-                "title": "Mail Message",
-                "properties": {
-                  "template_type": {
-                    "type": "string",
-                    "enum": ["string", "path"],
-                    "title": "Template type (string/path)"
+              "body": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "title": "Mail Message",
+                    "additionalProperties": false,
+                    "properties": {
+                      "template_file": {
+                        "type": "string",
+                        "title": "Template file (path)"
+                      },
+                      "ctx": {
+                        "$ref": "#/definitions/ctx"
+                      },
+                      "base_template": {
+                        "type": "string",
+                        "title": "Base Template"
+                      },
+                      "plain": {
+                        "type": "boolean",
+                        "title": "Plain text or HTML"
+                      }
+                    }
                   },
-                  "ctx": {
-                    "$ref": "#/definitions/ctx"
-                  },
-                  "base_template": {
-                    "type": "string",
-                    "title": "Base Template"
-                  },
-                  "plain": {
-                    "type": "boolean",
-                    "title": "Plain text or HTML"
+                  {
+                    "type": "object",
+                    "title": "Mail Message",
+                    "additionalProperties": false,
+                    "properties": {
+                      "template": {
+                        "type": "string",
+                        "title": "Template type (string/path)"
+                      },
+                      "ctx": {
+                        "$ref": "#/definitions/ctx"
+                      },
+                      "base_template": {
+                        "type": "string",
+                        "title": "Base Template"
+                      },
+                      "plain": {
+                        "type": "boolean",
+                        "title": "Plain text or HTML"
+                      }
+                    }
                   }
-                },
-                "dependencies": {
-                  "template_type": {
-                    "$ref": "#/definitions/template_type"
-                  }
-                }
+                ]
               },
               "recipients": {
                 "type": "object",
                 "title": "Mail Recipients",
-                "properties": {
-                  "bcc": {
+                "minProperties": 1,
+                "patternProperties": {
+                  "^(bcc|cc|recipients)$": {
                     "type": "array",
                     "title": "List of BCC recipients",
                     "uniqueItems": true,
+                    "minItems": 1,
                     "items": {
-                      "type": "object",
-                      "title": "Add config",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "enum": ["default", "method", "condition"],
-                          "title": "Config type"
-                        }
-                      },
-                      "dependencies": {
-                        "type": {
-                          "oneOf": [{
-                            "properties": {
-                              "type": {"enum": ["default"]},
-                              "mails": {
-                                "$ref": "#/definitions/mails"
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "type": "string",
+                              "title": "AND/OR"
+                            },
+                            "checks": {
+                              "type": "array",
+                              "items": {
+                                "oneOf": [
+                                  { "$ref": "#/definitions/checks" },
+                                  { "$ref": "#/definitions/condition" }
+                                ]
                               }
+                            },
+                            "mails": {
+                              "$ref": "#/definitions/mails"
+                            },
+                            "method": {
+                              "oneOf": [
+                                {
+                                  "title": "Method",
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "title": "Method",
+                                    "type": "string"
+                                  }
+                                }
+                              ]
                             }
-                          }, {
-                            "properties": {
-                              "type": {"enum": ["method"]},
-                              "method": {
-                                "title": "Method",
-                                "type": "string"
-                              }
-                            },
-                            "required": ["type", "method"]
-                          }, {
-                            "properties": {
-                              "type": {"enum": ["condition"]},
-                              "op": {
-                                "type": "string",
-                                "enum": ["and", "or"],
-                                "title": "Conditional operator"
-                              },
-                              "checks": {
-                                "$ref": "#/definitions/checks"
-                              },
-                              "mails": {
-                                "$ref": "#/definitions/mails"
-                              }
-                            },
-                            "required": ["type", "checks", "mails"]
-                          }]
+                          }
                         }
-                      }
-                    }
-                  },
-                  "cc": {
-                    "type": "array",
-                    "title": "List of BCC recipients",
-                    "uniqueItems": true,
-                    "items": {
-                      "type": "object",
-                      "title": "Add config",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "enum": ["default", "method", "condition"],
-                          "title": "Config type"
-                        }
-                      },
-                      "dependencies": {
-                        "type": {
-                          "oneOf": [{
-                            "properties": {
-                              "type": {"enum": ["default"]},
-                              "mails": {
-                                "$ref": "#/definitions/mails"
-                              }
-                            }
-                          }, {
-                            "properties": {
-                              "type": {"enum": ["method"]},
-                              "method": {
-                                "title": "Method",
-                                "type": "string"
-                              }
-                            },
-                            "required": ["type", "method"]
-                          }, {
-                            "properties": {
-                              "type": {"enum": ["condition"]},
-                              "op": {
-                                "type": "string",
-                                "enum": ["and", "or"],
-                                "title": "Conditional operator"
-                              },
-                              "checks": {
-                                "$ref": "#/definitions/checks"
-                              },
-                              "mails": {
-                                "$ref": "#/definitions/mails"
-                              }
-                            },
-                            "required": ["type", "checks", "mails"]
-                          }]
-                        }
-                      }
-                    }
-                  },
-                  "recipients": {
-                    "type": "array",
-                    "title": "List of BCC recipients",
-                    "uniqueItems": true,
-                    "items": {
-                      "type": "object",
-                      "title": "Add config",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "enum": ["default", "method", "condition"],
-                          "title": "Config type"
-                        }
-                      },
-                      "dependencies": {
-                        "type": {
-                          "oneOf": [{
-                            "properties": {
-                              "type": {"enum": ["default"]},
-                              "mails": {
-                                "$ref": "#/definitions/mails"
-                              }
-                            }
-                          }, {
-                            "properties": {
-                              "type": {"enum": ["method"]},
-                              "method": {
-                                "title": "Method",
-                                "type": "string"
-                              }
-                            },
-                            "required": ["type", "method"]
-                          }, {
-                            "properties": {
-                              "type": {"enum": ["condition"]},
-                              "op": {
-                                "type": "string",
-                                "enum": ["and", "or"],
-                                "title": "Conditional operator"
-                              },
-                              "checks": {
-                                "$ref": "#/definitions/checks"
-                              },
-                              "mails": {
-                                "$ref": "#/definitions/mails"
-                              }
-                            },
-                            "required": ["type", "checks", "mails"]
-                          }]
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "review": {
-          "type": "array",
-          "title": "Publish Options",
-          "items": {
-            "type": "object",
-            "title": "Mail Config/Options",
-            "properties": {
-              "subject": {
-                "type": "object",
-                "title": "Mail Subject",
-                "properties": {
-                  "template_type": {
-                    "type": "string",
-                    "enum": ["string", "path"],
-                    "title": "Template type (string/path)"
-                  },
-                  "ctx": {
-                    "$ref": "#/definitions/ctx"
-                  }
-                },
-                "dependencies": {
-                  "template_type": {
-                    "$ref": "#/definitions/template_type"
-                  }
-                }
-              },
-              "message": {
-                "type": "object",
-                "title": "Mail Message",
-                "properties": {
-                  "template_type": {
-                    "type": "string",
-                    "enum": ["string", "path"],
-                    "title": "Template type (string/path)"
-                  },
-                  "ctx": {
-                    "$ref": "#/definitions/ctx"
-                  },
-                  "base_template": {
-                    "type": "string",
-                    "title": "Base Template"
-                  },
-                  "plain": {
-                    "type": "boolean",
-                    "title": "Plain text or HTML"
-                  }
-                },
-                "dependencies": {
-                  "template_type": {
-                    "$ref": "#/definitions/template_type"
-                  }
-                }
-              },
-              "recipients": {
-                "type": "object",
-                "title": "Mail Recipients",
-                "properties": {
-                  "bcc": {
-                    "type": "array",
-                    "title": "List of BCC recipients",
-                    "uniqueItems": true,
-                    "items": {
-                      "type": "object",
-                      "title": "Add config",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "enum": ["default", "method", "condition"],
-                          "title": "Config type"
-                        }
-                      },
-                      "dependencies": {
-                        "type": {
-                          "oneOf": [{
-                            "properties": {
-                              "type": {"enum": ["default"]},
-                              "mails": {
-                                "$ref": "#/definitions/mails"
-                              }
-                            }
-                          }, {
-                            "properties": {
-                              "type": {"enum": ["method"]},
-                              "method": {
-                                "title": "Method",
-                                "type": "string"
-                              }
-                            },
-                            "required": ["type", "method"]
-                          }, {
-                            "properties": {
-                              "type": {"enum": ["condition"]},
-                              "op": {
-                                "type": "string",
-                                "enum": ["and", "or"],
-                                "title": "Conditional operator"
-                              },
-                              "checks": {
-                                "$ref": "#/definitions/checks"
-                              },
-                              "mails": {
-                                "$ref": "#/definitions/mails"
-                              }
-                            },
-                            "required": ["type", "checks", "mails"]
-                          }]
-                        }
-                      }
-                    }
-                  },
-                  "cc": {
-                    "type": "array",
-                    "title": "List of BCC recipients",
-                    "uniqueItems": true,
-                    "items": {
-                      "type": "object",
-                      "title": "Add config",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "enum": ["default", "method", "condition"],
-                          "title": "Config type"
-                        }
-                      },
-                      "dependencies": {
-                        "type": {
-                          "oneOf": [{
-                            "properties": {
-                              "type": {"enum": ["default"]},
-                              "mails": {
-                                "$ref": "#/definitions/mails"
-                              }
-                            }
-                          }, {
-                            "properties": {
-                              "type": {"enum": ["method"]},
-                              "method": {
-                                "title": "Method",
-                                "type": "string"
-                              }
-                            },
-                            "required": ["type", "method"]
-                          }, {
-                            "properties": {
-                              "type": {"enum": ["condition"]},
-                              "op": {
-                                "type": "string",
-                                "enum": ["and", "or"],
-                                "title": "Conditional operator"
-                              },
-                              "checks": {
-                                "$ref": "#/definitions/checks"
-                              },
-                              "mails": {
-                                "$ref": "#/definitions/mails"
-                              }
-                            },
-                            "required": ["type", "checks", "mails"]
-                          }]
-                        }
-                      }
-                    }
-                  },
-                  "recipients": {
-                    "type": "array",
-                    "title": "List of BCC recipients",
-                    "uniqueItems": true,
-                    "items": {
-                      "type": "object",
-                      "title": "Add config",
-                      "properties": {
-                        "type": {
-                          "type": "string",
-                          "enum": ["default", "method", "condition"],
-                          "title": "Config type"
-                        }
-                      },
-                      "dependencies": {
-                        "type": {
-                          "oneOf": [{
-                            "properties": {
-                              "type": {"enum": ["default"]},
-                              "mails": {
-                                "$ref": "#/definitions/mails"
-                              }
-                            }
-                          }, {
-                            "properties": {
-                              "type": {"enum": ["method"]},
-                              "method": {
-                                "title": "Method",
-                                "type": "string"
-                              }
-                            },
-                            "required": ["type", "method"]
-                          }, {
-                            "properties": {
-                              "type": {"enum": ["condition"]},
-                              "op": {
-                                "type": "string",
-                                "enum": ["and", "or"],
-                                "title": "Conditional operator"
-                              },
-                              "checks": {
-                                "$ref": "#/definitions/checks"
-                              },
-                              "mails": {
-                                "$ref": "#/definitions/mails"
-                              }
-                            },
-                            "required": ["type", "checks", "mails"]
-                          }]
-                        }
-                      }
+                      ]
                     }
                   }
                 }

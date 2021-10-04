@@ -122,8 +122,7 @@ def test_send_mail_when_ctx_method_doesnt_exist(
 @mark.parametrize('config', [
     EMPTY_CONFIG,
     NESTED_CONDITION_WITH_ERRORS_CONFIG,
-    CONDITION_THAT_DOESNT_EXIST_CONFIG,
-    NO_RECIPIENTS_CONFIG
+    CONDITION_THAT_DOESNT_EXIST_CONFIG
 ])
 def test_configs_where_mail_is_not_sent(
         config, app, users, create_deposit, create_schema, client, auth_headers_for_user):
