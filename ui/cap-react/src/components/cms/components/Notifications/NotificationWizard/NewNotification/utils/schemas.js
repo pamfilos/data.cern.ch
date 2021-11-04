@@ -46,15 +46,13 @@ export const schema = {
               ctx: {
                 $ref: "#/definitions/ctx"
               }
-            }
+            },
+            required: ["template"]
           }
         }
       }
     },
     ctxMethods: {
-      title: "Select Method",
-      type: "array",
-      items: {
         type: "object",
         properties: {
           method: {
@@ -73,8 +71,8 @@ export const schema = {
               "draft_revision"
             ]
           }
-        }
-      }
+        },
+        required: ["method"]
     },
     method: {
       type: "array",
@@ -93,6 +91,19 @@ export const schema = {
           "submitter_url",
           "reviewer_url",
           "cms_stats_committee_by_pag"
+        ]
+      }
+    },
+    recipient_method: {
+      type: "array",
+      title: "Methods",
+      uniqueItems: true,
+      items: {
+        type: "string",
+        enum: [
+          "get_submitter",
+          "get_owner",
+          "get_cms_stat_recipients"
         ]
       }
     },
@@ -271,7 +282,7 @@ export const schema = {
                 $ref: "#/definitions/mails"
               },
               method: {
-                $ref: "#/definitions/method"
+                $ref: "#/definitions/recipient_method"
               }
             }
           }
@@ -288,7 +299,7 @@ export const schema = {
                 $ref: "#/definitions/mails"
               },
               method: {
-                $ref: "#/definitions/method"
+                $ref: "#/definitions/recipient_method"
               }
             }
           }
@@ -305,7 +316,7 @@ export const schema = {
                 $ref: "#/definitions/mails"
               },
               method: {
-                $ref: "#/definitions/method"
+                $ref: "#/definitions/recipient_method"
               }
             }
           }
@@ -361,7 +372,6 @@ export const uiSchema = {
       items: {
         mails: {
           formatted: {
-            "ui:array": "default",
             items: {
               ctx: {
                 "ui:field": "ctx"
@@ -375,7 +385,6 @@ export const uiSchema = {
       items: {
         mails: {
           formatted: {
-            "ui:array": "default",
             items: {
               ctx: {
                 "ui:field": "ctx"

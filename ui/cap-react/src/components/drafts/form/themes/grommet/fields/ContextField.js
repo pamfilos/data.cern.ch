@@ -13,7 +13,7 @@ const ContextField = ({ formData = [], onChange = null }) => {
 
   useEffect(
     () => {
-      let combined = [...methodData.formData, ...manualData.formData];
+      let combined = [...methodData.formData.map(i => (i.method ? i : {method: i})), ...manualData.formData];
       onChange(combined);
     },
     [methodData, manualData]
@@ -22,12 +22,9 @@ const ContextField = ({ formData = [], onChange = null }) => {
   return (
     <div>
       <CleanForm
-        schema={schema.definitions.ctxMethods}
+        schema={schema.definitions.method}
         onChange={setMethodData}
-        formData={methodData.formData}
-        uiSchema={{
-          "ui:array": "default"
-        }}
+        formData={methodData.formData.map(i => (i.method ? i.method : i))}
       >
         <span />
       </CleanForm>
