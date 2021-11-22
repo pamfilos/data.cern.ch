@@ -20,19 +20,24 @@ const DashboardListItem = ({ item }) => {
     return title;
   };
   return (
-    <List.Item>
+    <List.Item
+      extra={[
+        <Typography.Text type="secondary" style={{ textAlign: "right", marginLeft: "10px" }}>
+          <div>updated</div>
+          {updated && <TimeAgo date={updated} minPeriod="60" />}
+        </Typography.Text>
+      ]}
+    >
+
       <List.Item.Meta
         title={getTitle()}
         description={
-          <Typography.Paragraph ellipsis type="secondary">
-            {abstract ? abstract : "No abstract provided"}
-          </Typography.Paragraph>
+        <Typography.Text type="secondary" ellipsis={{rows: 1}}>{
+          abstract ? abstract : "No abstract provided"}
+        </Typography.Text> 
         }
       />
-      <Typography.Text style={{ textAlign: "right", marginLeft: "10px" }}>
-        <div>updated</div>
-        {updated && <TimeAgo date={updated} minPeriod="60" />}
-      </Typography.Text>
+
     </List.Item>
   );
 };

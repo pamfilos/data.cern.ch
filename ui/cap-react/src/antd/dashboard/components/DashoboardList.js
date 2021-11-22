@@ -1,9 +1,14 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
-import { Typography, Row, List } from "antd";
+import { Typography, Col, Row, List, Space } from "antd";
 import DashboardListLoader from "./Loader";
 import DashboardListItem from "./DashboardListItem";
+import TimeAgo from "react-timeago";
+
+import TypeTags from "./TypeTags";
+
+const { Title } = Typography;
 
 const DashoboardList = ({ header = "", listType, list, loading }) => {
   let listKeys = Object.keys(list);
@@ -15,25 +20,9 @@ const DashoboardList = ({ header = "", listType, list, loading }) => {
       className="__DashboardList__"
       size="small"
       header={
-        <Row
-          align="middle"
-          justify="space-between"
-          style={{ padding: "0 10px" }}
-        >
-          <Typography.Title level={4}>{header}</Typography.Title>
-          <Row align="middle">
-            {listKeys.map(type => (
-              <Typography.Title
-                key={type}
-                level={5}
-                onClick={() => setActiveList(type)}
-                type={activeList != type && "secondary"}
-                style={{ marginBottom: 0, marginRight: "5px" }}
-              >
-                {type}
-              </Typography.Title>
-            ))}
-          </Row>
+        <Row style={{ padding: "0 10px" }}>
+          <Col flex="auto"><strong>{header}</strong></Col>
+          <Col flex="none"><TypeTags types={listKeys} /></Col>
         </Row>
       }
       data-cy={`${header.replace(/\s/g, "")}-list`}

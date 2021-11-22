@@ -60,9 +60,7 @@ class App extends React.Component {
           <Route path={CMS} component={CMSIndex} />
           <Route path={SEARCH_TIPS} component={HowToSearchPage} />
           <Route path={HOME} component={requireAuth(IndexPage)} />
-          {/*
-            <Route component={NotFoundPage} />
-             */}
+          {/* <Route component={NotFoundPage} /> */}
         </Switch>
       </DocumentTitle>
     );

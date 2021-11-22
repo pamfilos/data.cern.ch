@@ -22,7 +22,7 @@ const Dashboard = ({ fetchDashboard, results, loading }) => {
           loading={loading}
           listType="draft"
           list={lists["drafts"]}
-          header="drafts"
+          header="Draft Documents"
           emptyMessage="Draft analyses that your collaborators have given you read/write access to."
         />
       </Col>
@@ -62,7 +62,7 @@ const Dashboard = ({ fetchDashboard, results, loading }) => {
           loading={loading}
           listType="published"
           list={lists["published"]}
-          header="published in collaboration"
+          header="Published (in CAP) Documents"
           emptyMessage="All analyses published on CAP by members of your collaboration."
         />
       </Col>
