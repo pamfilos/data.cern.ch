@@ -144,7 +144,6 @@ def collection(collection_name, version=None):
             collection_schema = Schema.get(collection_name, version)
         else:
             collection_schema = Schema.get_latest(collection_name)
-            version = collection_schema.version
 
     except JSONSchemaNotFound:
         abort(404)
@@ -186,18 +185,22 @@ def collection(collection_name, version=None):
         user_published = []
         user_drafts = []
 
+    collection_args = f'collection={collection_name}'
+    if version:
+        collection_args += f'&collection_version={version}'
+
     return jsonify({
         'published': {
-            'data': published, 'more': '/search?q='
+            'data': published, 'more': f'/search?{collection_args}&q='
         },
         'drafts': {
-            'data': drafts, 'more': '/drafts?q='
+            'data': drafts, 'more': f'/drafts?{collection_args}&q='
         },
         'user_published': {
-            'data': user_published, 'more': '/search?q=&by_me=True'
+            'data': user_published, 'more': f'/search?{collection_args}&q=&by_me=True'
         },
         'user_drafts': {
-            'data': user_drafts, 'more': '/drafts?q=&by_me=True'
+            'data': user_drafts, 'more': f'/drafts?{collection_args}&q=&by_me=True'
         },
         'schema_data': schema_data
     })
