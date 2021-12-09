@@ -206,15 +206,17 @@ def test_collection_view_fetching_properly_results(client, users,create_deposit,
 
     # create 1 draft/published for cms
     cms_v2_deposit_2 = create_deposit(users['cms_user'], 'cms-stats-questionnaire', version="0.2.1")
+    cms_v3_deposit_1 = create_deposit(users['cms_user'], 'cms-analysis', version="0.2.1")
 
     resp = client.get('/collection/cms-stats-questionnaire',
                       headers=auth_headers_for_user(users['cms_user']))
     cms_drafts = [x['id'] for x in resp.json['user_drafts']['data']]
 
-    assert len(cms_drafts) == 1
-    assert cms_v1_deposit_1['_deposit']['id'] not in cms_drafts
-    assert cms_v1_deposit_2['_deposit']['id'] not in cms_drafts
+    assert len(cms_drafts) == 3
+    assert cms_v1_deposit_1['_deposit']['id'] in cms_drafts
+    assert cms_v1_deposit_2['_deposit']['id'] in cms_drafts
     assert cms_v2_deposit_2['_deposit']['id'] in cms_drafts
+    assert cms_v3_deposit_1['_deposit']['id'] not in cms_drafts
 
     resp = client.get('/collection/cms-stats-questionnaire/0.2.0',
                       headers=auth_headers_for_user(users['cms_user']))

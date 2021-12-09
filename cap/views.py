@@ -163,22 +163,22 @@ def collection(collection_name, version=None):
     try:
         published = _serialize_records(
             rs.get_collection_records(collection_schema.name,
-                                        collection_version=version)[:5]
-                                        .execute()
+                                      collection_version=version
+                                      )[:5].execute()
         )
         drafts = _serialize_deposits(
             ds.get_collection_deposits(collection_schema.name,
-                                        collection_version=version)[:5]
-                                        .execute()
+                                       collection_version=version
+                                       )[:5].execute()
         )
         user_drafts = _serialize_deposits(ds.get_collection_deposits(
-            collection_schema.name, by_me=True, collection_version=version)[:5]
-            .execute())
+            collection_schema.name, by_me=True, collection_version=version
+        )[:5].execute())
 
-        user_published = _serialize_records(
-            rs.get_collection_records(collection_schema.name,
-                                    by_me=True, collection_version=version)[:5]
-            .execute())
+        user_published = _serialize_records(rs.get_collection_records(
+            collection_schema.name, by_me=True, collection_version=version
+        )[:5].execute())
+
     except NotFoundError as e:
         published = []
         drafts = []
@@ -197,10 +197,12 @@ def collection(collection_name, version=None):
             'data': drafts, 'more': f'/drafts?{collection_args}&q='
         },
         'user_published': {
-            'data': user_published, 'more': f'/search?{collection_args}&q=&by_me=True'
+            'data': user_published,
+            'more': f'/search?{collection_args}&q=&by_me=True'
         },
         'user_drafts': {
-            'data': user_drafts, 'more': f'/drafts?{collection_args}&q=&by_me=True'
+            'data': user_drafts,
+            'more': f'/drafts?{collection_args}&q=&by_me=True'
         },
         'schema_data': schema_data
     })
