@@ -106,6 +106,7 @@ class SchemaResponseSerializer(SchemaSerializer):
 
 class PatchedSchemaSerializer(Schema):
     """Schema serializer for patching jsonschemas."""
+
     fullname = fields.Str()
     use_deposit_as_record = fields.Boolean(default=False)
     config = fields.Dict()
@@ -116,13 +117,16 @@ class PatchedSchemaSerializer(Schema):
     record_options = fields.Dict()
     record_mapping = fields.Dict()
 
+
 class SchemaPayloadSerializer(SchemaSerializer):
     """Schema serializer with resolved jsonschemas."""
+
     config = fields.Dict()
 
 
 class UpdateSchemaPayloadSerializer(SchemaPayloadSerializer):
     """Schema serializer with resolved jsonschemas."""
+
     @pre_load
     def filter_out_fields_that_cannot_be_updated(self, data, **kwargs):
         """Remove non editable fields from serialized data."""
@@ -130,6 +134,7 @@ class UpdateSchemaPayloadSerializer(SchemaPayloadSerializer):
         if not data:
             raise ValidationError('Empty data')
         return data
+
 
 class ResolvedSchemaResponseSerializer(SchemaResponseSerializer):
     """Schema serializer with resolved jsonschemas."""
@@ -152,6 +157,7 @@ class ResolvedSchemaResponseSerializer(SchemaResponseSerializer):
             obj.record_path, with_refs=True, resolved=True
         )
         return copy.deepcopy(schema)  # so all the JSONRefs get resoved
+
 
 class ConfigResolvedSchemaSerializer(ResolvedSchemaResponseSerializer):
     config = fields.Dict()
@@ -226,7 +232,6 @@ class LinkSerializer(Schema):
         )
 
         return links
-
 
 
 schema_serializer = SchemaResponseSerializer()

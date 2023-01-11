@@ -23,5 +23,5 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 from .body import *
-from .subject import *
 from .recipients import *
+from .subject import *

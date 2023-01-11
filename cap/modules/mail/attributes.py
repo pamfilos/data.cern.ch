@@ -23,11 +23,10 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 from flask import current_app
 
+from .conditions import CONDITION_METHODS
 from .custom import body as custom_body
 from .custom import recipients as custom_recipients
 from .custom import subject as custom_subjects
-
-from .conditions import CONDITION_METHODS
 from .utils import (
     EMAIL_REGEX,
     get_config_default,
@@ -159,9 +158,9 @@ def get_recipients_from_config(record, config, default_ctx={}):
                 for _method in methods:
                     try:
                         method = getattr(custom_recipients, _method)
-                        result = method(record,
-                                        config=item,
-                                        default_ctx=default_ctx)
+                        result = method(
+                            record, config=item, default_ctx=default_ctx
+                        )
                         if isinstance(result, list):
                             mails += result
                         else:
@@ -174,8 +173,9 @@ def get_recipients_from_config(record, config, default_ctx={}):
 
             if item.get("mails"):
                 mail_config = item.get("mails", {})
-                update_mail_list(record, mail_config,
-                                 mails, default_ctx=default_ctx)
+                update_mail_list(
+                    record, mail_config, mails, default_ctx=default_ctx
+                )
         else:
             continue
 
@@ -238,8 +238,13 @@ def generate_body(record, config, default_ctx={}):
     """
     body_config = config.get("body", {})
 
-    body = populate_template_from_ctx(record, body_config, module=custom_body,
-                                      type="body", default_ctx=default_ctx)
+    body = populate_template_from_ctx(
+        record,
+        body_config,
+        module=custom_body,
+        type="body",
+        default_ctx=default_ctx,
+    )
 
     base = "mail/base.html"
 

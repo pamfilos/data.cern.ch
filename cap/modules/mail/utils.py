@@ -24,8 +24,8 @@
 import re
 
 from flask import current_app, request
-from jinja2.exceptions import TemplateNotFound, TemplateSyntaxError
 from jinja2 import Environment, PackageLoader, select_autoescape
+from jinja2.exceptions import TemplateNotFound, TemplateSyntaxError
 from werkzeug.exceptions import BadRequest
 
 from . import custom as custom_methods
@@ -34,8 +34,7 @@ from . import custom as custom_methods
 # injection with Flask context passed in render_template
 _template_loader = PackageLoader("cap.modules.mail", "templates")
 _mail_jinja_env = Environment(
-    loader=_template_loader,
-    autoescape=select_autoescape()
+    loader=_template_loader, autoescape=select_autoescape()
 )
 
 EMAIL_REGEX = re.compile(r"(?!.*\.\.)(^[^.][^@\s]+@[^@\s]+\.[^@\s.]+$)")
@@ -87,8 +86,9 @@ def path_value_equals(path, record):
         return None
 
 
-def populate_template_from_ctx(record, config, module=None,
-                               type=None, default_ctx={}):
+def populate_template_from_ctx(
+    record, config, module=None, type=None, default_ctx={}
+):
     """
     Render a template according to the context provided in the schema.
     Args:
@@ -130,7 +130,8 @@ def populate_template_from_ctx(record, config, module=None,
         )
         current_app.logger.error(msg)
         raise UnsuccessfulMail(
-            rec_uuid=record.id, msg=msg, params={"config": config})
+            rec_uuid=record.id, msg=msg, params={"config": config}
+        )
 
     ctx = {**default_ctx}
     gen_ctx = generate_ctx(config_ctx, record=record, default_ctx=default_ctx)
@@ -141,15 +142,18 @@ def populate_template_from_ctx(record, config, module=None,
     except TemplateNotFound as ex:
         msg = f"Template {ex.name} not found. Notification procedure aborted."
         raise UnsuccessfulMail(
-            rec_uuid=record.id, msg=msg, params={"config": config})
+            rec_uuid=record.id, msg=msg, params={"config": config}
+        )
     except TemplateSyntaxError as ex:
         msg = f"Template error: {ex.message}. Notification procedure aborted."
         raise UnsuccessfulMail(
-            rec_uuid=record.id, msg=msg, params={"config": config})
+            rec_uuid=record.id, msg=msg, params={"config": config}
+        )
     except TypeError as ex:
         msg = f"Context for template is empty. Notification procedure aborted."
         raise UnsuccessfulMail(
-            rec_uuid=record.id, msg=msg, params={"config": config})
+            rec_uuid=record.id, msg=msg, params={"config": config}
+        )
 
 
 def generate_ctx(config_ctx, record=None, default_ctx={}):
@@ -197,8 +201,7 @@ def update_mail_list(record, config, mails, default_ctx={}):
         for formatted in formatted_list:
             try:
                 _formatted_email = populate_template_from_ctx(
-                    record, formatted,
-                    type="recipient", default_ctx=default_ctx
+                    record, formatted, type="recipient", default_ctx=default_ctx
                 )
                 mails += [_formatted_email]
             except UnsuccessfulMail:
@@ -240,8 +243,8 @@ def render_template(template_name_or_list, **context):
                     context of the template.
     """
     return _render(
-        _mail_jinja_env.get_or_select_template(template_name_or_list),
-        context)
+        _mail_jinja_env.get_or_select_template(template_name_or_list), context
+    )
 
 
 def render_template_string(source, **context):

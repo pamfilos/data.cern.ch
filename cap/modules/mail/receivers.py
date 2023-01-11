@@ -21,17 +21,18 @@
 # In applying this license, CERN does not
 # waive the privileges and immunities granted to it by virtue of its status
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
+from celery import shared_task
 from flask import current_app
 from flask_login import current_user
+from invenio_records.api import Record
 
-from .attributes import generate_recipients, generate_subject, generate_body
+from cap.modules.deposit.api import CAPDeposit
+
+from .attributes import generate_body, generate_recipients, generate_subject
 from .custom.body import submitter_email, working_url
 from .custom.subject import draft_id, published_id, revision
 from .tasks import create_and_send
 from .utils import UnsuccessfulMail, generate_ctx, is_review_request
-from cap.modules.deposit.api import CAPDeposit
-from celery import shared_task
-from invenio_records.api import Record
 
 
 def post_action_notifications(sender, action=None, pid=None, deposit=None):
@@ -73,9 +74,11 @@ def send_deposit_notifications(record_uuid, user_id, action):
         current_app.logger.info('Mail Error: Sender not found.')
         return
 
-    action_configs = deposit.schema.config.get('notifications', {}) \
-        .get('actions', {}) \
+    action_configs = (
+        deposit.schema.config.get('notifications', {})
+        .get('actions', {})
         .get(action, [])
+    )
 
     # retrieve the most common Deposit/Record attributes, used in messages
     # try:
@@ -92,20 +95,19 @@ def send_deposit_notifications(record_uuid, user_id, action):
         ctx_config = config.get("ctx", [])
         default_ctx = generate_ctx(ctx_config, record=deposit)
         msg_ctx = {**default_ctx, **msg_ctx}
-        recipients, cc, bcc = generate_recipients(deposit,
-                                                  config,
-                                                  default_ctx=msg_ctx)
+        recipients, cc, bcc = generate_recipients(
+            deposit, config, default_ctx=msg_ctx
+        )
         if not any([recipients, cc, bcc]):
             continue
 
         try:
-            subject = generate_subject(deposit, config,
-                                       default_ctx=msg_ctx)
-            body, base = generate_body(deposit, config,
-                                       default_ctx=msg_ctx)
+            subject = generate_subject(deposit, config, default_ctx=msg_ctx)
+            body, base = generate_body(deposit, config, default_ctx=msg_ctx)
         except UnsuccessfulMail as err:
             current_app.logger.error(
-                f"UnsuccessfulMail | Rec_id:{err.rec_uuid} - {err.msg}")
+                f"UnsuccessfulMail | Rec_id:{err.rec_uuid} - {err.msg}"
+            )
             continue
         plain = config.get('body', {}).get('plain')
 
@@ -114,14 +116,9 @@ def send_deposit_notifications(record_uuid, user_id, action):
             'subject': subject,
             'recipients': recipients,
             'cc': cc,
-            'bcc': bcc
+            'bcc': bcc,
         }
 
-        msg_ctx.update({
-            'mail_body': body
-        })
+        msg_ctx.update({'mail_body': body})
 
-        create_and_send.delay(
-            base, msg_ctx, mail_ctx,
-            plain=plain
-        )
+        create_and_send.delay(base, msg_ctx, mail_ctx, plain=plain)

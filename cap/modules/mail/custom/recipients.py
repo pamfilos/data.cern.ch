@@ -23,11 +23,10 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 
 from flask import current_app
-
 from invenio_accounts.models import User
 
 
-def get_submitter(record,  **kwargs):
+def get_submitter(record, **kwargs):
     """Returns the submitter of the analysis, aka the current user."""
     submitter_user_id = kwargs.get('default_ctx', {}).get('submitter_id')
     submitter_user = User.query.filter_by(id=submitter_user_id).one()

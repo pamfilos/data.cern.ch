@@ -40,18 +40,20 @@ from sqlalchemy.exc import IntegrityError
 from cap.modules.access.permissions import admin_permission_factory
 from cap.modules.access.utils import login_required
 
+from .helpers import ValidationError
 from .models import Schema
 from .permissions import AdminSchemaPermission, ReadSchemaPermission
-
-from .serializers import (schema_payload_serializer,link_serializer,
-                          update_payload_schema_serializer)
+from .serializers import (
+    link_serializer,
+    schema_payload_serializer,
+    update_payload_schema_serializer,
+)
 from .utils import (
     check_allowed_patch_operation,
     check_allowed_patch_path,
     get_schemas_for_user,
-    validate_schema_config
+    validate_schema_config,
 )
-from .helpers import ValidationError
 
 blueprint = Blueprint(
     'cap_schemas',
@@ -141,10 +143,10 @@ class SchemaAPI(MethodView):
         except IntegrityError:
             raise abort(400, 'Error occured during saving schema in the db.')
         except ValidationError as err:
-            return jsonify({
-                "message": err.description,
-                "errors": err.errors
-            }), 400
+            return (
+                jsonify({"message": err.description, "errors": err.errors}),
+                400,
+            )
 
         return jsonify(schema.config_serialize())
 
@@ -161,7 +163,8 @@ class SchemaAPI(MethodView):
 
             self._validate_config(data)
             serialized_data, errors = update_payload_schema_serializer.load(
-                data, partial=True)
+                data, partial=True
+            )
 
             if errors:
                 raise abort(400, errors)
@@ -170,10 +173,10 @@ class SchemaAPI(MethodView):
                 schema.update(**serialized_data)
                 db.session.commit()
             except ValidationError as err:
-                return jsonify({
-                    "message": err.description,
-                    "errors": err.errors
-                }), 400
+                return (
+                    jsonify({"message": err.description, "errors": err.errors}),
+                    400,
+                )
 
             return jsonify(schema.config_serialize())
 

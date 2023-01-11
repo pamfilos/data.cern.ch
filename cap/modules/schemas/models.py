@@ -46,6 +46,7 @@ from cap.modules.deposit.errors import WrongJSONSchemaError
 from cap.modules.records.errors import get_error_path
 from cap.types import json_type
 
+from .helpers import ValidationError, validate_schema_config
 from .jsonschemas import SCHEMA_CONFIG_JSONSCHEMA_V1
 from .permissions import SchemaAdminAction, SchemaReadAction
 from .serializers import (
@@ -54,7 +55,6 @@ from .serializers import (
     resolved_schemas_serializer,
     schema_serializer,
 )
-from .helpers import validate_schema_config, ValidationError
 
 ES_FORBIDDEN = r' ,"\<*>|?'
 

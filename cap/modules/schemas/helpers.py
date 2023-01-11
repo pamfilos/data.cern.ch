@@ -23,12 +23,12 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 """Utils for Schemas module."""
 
-import os
 import json
+import os
 import pathlib
 
-from jsonschema import Draft4Validator, RefResolver
 from invenio_rest.errors import FieldError
+from jsonschema import Draft4Validator, RefResolver
 
 from cap.modules.records.errors import get_error_path
 
@@ -50,8 +50,7 @@ def validate_schema_config(config_data):
                 schema_store[f'file:///{fpath}'] = _schema
 
     resolver = RefResolver(
-        "file:///cap/modules/schemas/configs/config.json",
-        schema, schema_store
+        "file:///cap/modules/schemas/configs/config.json", schema, schema_store
     )
     validator = Draft4Validator(schema, resolver=resolver)
 
@@ -65,6 +64,7 @@ def validate_schema_config(config_data):
 
 class ValidationError(Exception):
     """Schema validation error."""
+
     errors = None
     description = "Validation Error"
 

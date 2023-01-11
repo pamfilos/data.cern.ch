@@ -23,15 +23,15 @@
 # as an Intergovernmental Organization or submit itself to any jurisdiction.
 """Utils for Schemas module."""
 
-import os
 import json
-import re
+import os
 import pathlib
+import re
 from itertools import groupby
 
+from invenio_rest.errors import FieldError
 from jsonpatch import JsonPatchConflict
 from jsonschema import Draft4Validator, RefResolver
-from invenio_rest.errors import FieldError
 
 from cap.modules.records.errors import get_error_path
 
@@ -161,6 +161,7 @@ def check_allowed_patch_path(data):
             raise JsonPatchConflict
     return data
 
+
 def validate_schema_config(config_data):
     cwd = pathlib.Path(__file__).parent.absolute()
     with open(cwd.joinpath('configs/config.json')) as json_:
@@ -178,8 +179,7 @@ def validate_schema_config(config_data):
                 schema_store[f'file:///{fpath}'] = _schema
 
     resolver = RefResolver(
-        "file:///cap/modules/schemas/configs/config.json",
-        schema, schema_store
+        "file:///cap/modules/schemas/configs/config.json", schema, schema_store
     )
     validator = Draft4Validator(schema, resolver=resolver)
 

@@ -61,6 +61,7 @@ def is_egroup_member(record, path, value, **kwargs):
 
     return True if value in groups else False
 
+
 CONDITION_METHODS = {
     # path/metadata conditions
     'equals': equals,
@@ -68,9 +69,8 @@ CONDITION_METHODS = {
     'exists': exists,
     'is_in': is_in,
     'is_not_in': is_not_in,
-
     # mail/permission conditions
-    'is_egroup_member': is_egroup_member
+    'is_egroup_member': is_egroup_member,
 }
 
 
