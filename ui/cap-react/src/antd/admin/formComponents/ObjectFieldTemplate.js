@@ -76,24 +76,24 @@ const ObjectFieldTemplate = function(props) {
   // update the uiSchema after the cards update
   // removes the ids and updates the ui:orded with the new one
   // everytyhing else remains the same
-  useEffect(
-    () => {
-      let uiCards = cards.map(item => item.name);
-      let uiProperties = props.properties.map(item => item.name);
-      let { ...rest } = props.uiSchema;
+  // useEffect(
+  //   () => {
+  //     let uiCards = cards.map(item => item.name);
+  //     let uiProperties = props.properties.map(item => item.name);
+  //     let { ...rest } = props.uiSchema;
 
-      uiCards = uiProperties.length < uiCards.length ? uiProperties : uiCards;
+  //     uiCards = uiProperties.length < uiCards.length ? uiProperties : uiCards;
 
-      props.onUiSchemaChange(
-        props.formContext.uiSchema.length > 0 ? props.formContext.uiSchema : [],
-        {
-          ...rest,
-          "ui:order": [...uiCards, "*"],
-        }
-      );
-    },
-    [props.properties, cards]
-  );
+  //     // props.onUiSchemaChange(
+  //     //   props.formContext.uiSchema.length > 0 ? props.formContext.uiSchema : [],
+  //     //   {
+  //     //     ...rest,
+  //     //     "ui:order": [...uiCards, "*"],
+  //     //   }
+  //     // );
+  //   },
+  //   [props.properties, cards]
+  // );
 
   // create a new array to keep track of the changes in the order
   props.properties.map((prop, index) => {
@@ -110,24 +110,24 @@ const ObjectFieldTemplate = function(props) {
     setCards([...cards, item]);
   });
 
-  const moveCard = useCallback(
-    (dragIndex, hoverIndex) => {
-      const dragCard = cards[dragIndex];
-      if (dragCard) {
-        setCards(
-          update(cards, {
-            $splice: [[dragIndex, 1], [hoverIndex, 0, dragCard]],
-          })
-        );
-      }
-    },
-    [cards]
-  );
+  // const moveCard = useCallback(
+  //   (dragIndex, hoverIndex) => {
+  //     const dragCard = cards[dragIndex];
+  //     if (dragCard) {
+  //       setCards(
+  //         update(cards, {
+  //           $splice: [[dragIndex, 1], [hoverIndex, 0, dragCard]],
+  //         })
+  //       );
+  //     }
+  //   },
+  //   [cards]
+  // );
   if (props.idSchema.$id == "root") {
     return (
       <div>
         {cards.map((card, i) =>
-          RenderSortable(props.formContext.uiSchema, card, i, moveCard)
+          RenderSortable(props.formContext.uiSchema, card, i, ()=>{})
         )}
       </div>
     );
@@ -144,8 +144,8 @@ ObjectFieldTemplate.propTypes = {
 
 function mapDispatchToProps(dispatch) {
   return {
-    onUiSchemaChange: (path, schema) =>
-      dispatch(updateUiSchemaByPath(path, schema)),
+    // onUiSchemaChange: (path, schema) =>
+    //   dispatch(updateUiSchemaByPath(path, schema)),
   };
 }
 

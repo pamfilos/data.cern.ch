@@ -15,24 +15,26 @@ const Customize = ({
   onUiSchemaChange,
   path,
   _path,
+  _uiPath,
 }) => {
   const [justify, setJustify] = useState(() => "start");
   const [size, setSize] = useState("xlarge");
 
-  useEffect(
-    () => {
-      if (uiSchema.toJS().hasOwnProperty("ui:options")) {
-        setSize(uiSchema.toJS()["ui:options"].size);
-        setJustify(uiSchema.toJS()["ui:options"].justify);
-      }
-    },
-    [uiSchema]
-  );
+  // useEffect(
+  //   () => {
+  //   if (uiSchema && uiSchema.toJS().hasOwnProperty("ui:options")) {
+  //       setSize(uiSchema.toJS()["ui:options"].size);
+  //       setJustify(uiSchema.toJS()["ui:options"].justify);
+  //     }
+  //   },
+  //   [uiSchema]
+  // );
 
   const _onSchemaChange = data => {
     onSchemaChange(path.get("path").toJS(), data.formData);
   };
   const _onUiSchemaChange = data => {
+    console.log("==============: ", path.get("uiPath").toJS(), path.toJS(), data.formData)
     onUiSchemaChange(path.get("uiPath").toJS(), data.formData);
   };
   const sizeChange = newSize => {
@@ -78,16 +80,21 @@ const Customize = ({
         />
       </Tabs.TabPane>
       <Tabs.TabPane tab="UI Schema Settings" key="2">
-        {_path.size != 0 ? (
+        {/* {_path.size != 0 ? ( */}
+          <Space>
+            {_uiPath}
           <PropertyKeyEditorForm
             schema={schema && schema.toJS()}
             uiSchema={uiSchema && uiSchema.toJS()}
             formData={uiSchema && uiSchema.toJS()}
-            onChange={_debounce(_onUiSchemaChange, 500)}
+          // onChange={_debounce(_onSchemaChange, 500)}
+          onChange={_onUiSchemaChange}
             optionsSchemaObject="optionsUiSchema"
             optionsUiSchemaObject="optionsUiSchemaUiSchema"
+            key={_uiPath}
           />
-        ) : (
+          </Space>
+        {/* ) : ( */}
           <Space
             direction="vertical"
             style={{ padding: "0 12px", width: "100%" }}
@@ -114,7 +121,7 @@ const Customize = ({
               ))}
             </Radio.Group>
           </Space>
-        )}
+        {/* )} */}
       </Tabs.TabPane>
     </Tabs>
   );
